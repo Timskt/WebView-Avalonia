@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Project>
+  <PropertyGroup>
+    <TargetDotnetVersion>net8.0</TargetDotnetVersion>
+    <Platforms>x64;ARM64</Platforms>
+    <AvaloniaVersion>11.0.10</AvaloniaVersion>
+    <!-- CEF 106.x is the last version supporting Windows 7 -->
+    <CefGlueVersion>106.5249.19-avalonia11</CefGlueVersion>
+  </PropertyGroup>
+
+  <PropertyGroup>
+    <AssemblyVersion>2.0.0.0</AssemblyVersion>
+    <FileVersion>2.0.0.0</FileVersion>
+    <!-- Please see https://github.com/OutSystems/WebView?tab=readme-ov-file#versioning for versioning rules -->
+    <!-- Windows 7 compatible version based on CEF 106 -->
+    <Version>2.106.10-avalonia11-win7</Version>
+    <Authors>OutSystems</Authors>
+    <Product>WebViewControl</Product>
+    <Copyright>Copyright © OutSystems 2023</Copyright>
+    <PackageProjectUrl>https://github.com/OutSystems/WebView</PackageProjectUrl>
+    <PackageOutputPath>$(MSBuildProjectDirectory)\..\nuget</PackageOutputPath>
+  </PropertyGroup>
+
+  <PropertyGroup Condition="'$(Platform)' == '' or '$(Platform)' == 'x64'">
+    <PackageSuffix />
+    <CefGluePackageSuffix />
+  </PropertyGroup>
+
+  <PropertyGroup Condition="'$(Platform)' == 'ARM64'">
+    <PackageSuffix>-ARM64</PackageSuffix>
+    <CefGluePackageSuffix>.ARM64</CefGluePackageSuffix>
+  </PropertyGroup>
+</Project>

@@ -1,0 +1,53 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>$(TargetDotnetVersion)</TargetFramework>
+    <RollForward>LatestMajor</RollForward>
+    <Configurations>Debug;Release;ReleaseAvalonia;ReleaseWPF;ReleaseAvaloniaRemoteDebugSupport</Configurations>
+    <RuntimeIdentifiers>osx-x64;win-x64;osx-arm64;win-arm64</RuntimeIdentifiers>
+    <ErrorOnDuplicatePublishOutputFiles>false</ErrorOnDuplicatePublishOutputFiles>
+    <ApplicationManifest>app.manifest</ApplicationManifest>
+  </PropertyGroup>
+    
+  <PropertyGroup>
+    <CFBundleName>SampleWebView.Avalonia</CFBundleName> <!-- Also defines .app file name -->
+    <CFBundleDisplayName>SampleWebView</CFBundleDisplayName>
+    <CFBundleIdentifier>com.example</CFBundleIdentifier>
+    <CFBundleVersion>1.0.0</CFBundleVersion>
+    <CFBundlePackageType>AAPL</CFBundlePackageType>
+    <CFBundleSignature>4242</CFBundleSignature>
+    <CFBundleShortVersionString>DemoAvalonia</CFBundleShortVersionString>
+    <CFBundleExecutable>SampleWebView.Avalonia</CFBundleExecutable>
+    <CFBundleIconFile>AppName.icns</CFBundleIconFile> <!-- Will be copied from output directory -->
+    <NSPrincipalClass>NSApplication</NSPrincipalClass>
+    <NSHighResolutionCapable>true</NSHighResolutionCapable>
+  </PropertyGroup>
+    
+  <ItemGroup>
+    <None Remove="App.xaml" />
+    <None Remove="MainWindow.xaml" />
+    <None Remove="tmp\**\*.*" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <AvaloniaResource  Include="App.xaml">
+      <Generator>MSBuild:Compile</Generator>
+    </AvaloniaResource >
+    <AvaloniaResource  Include="MainWindow.xaml">
+      <Generator>MSBuild:Compile</Generator>
+    </AvaloniaResource >
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Avalonia.Desktop" />
+    <PackageReference Include="Avalonia.ReactiveUI" />
+    <PackageReference Include="Avalonia.Themes.Fluent" />
+    <PackageReference Include="Dotnet.Bundle" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\WebViewControl.Avalonia\WebViewControl.Avalonia.csproj" />
+  </ItemGroup>
+
+</Project>

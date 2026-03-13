@@ -1,0 +1,33 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+  
+  <PropertyGroup>
+    <TargetFramework>$(TargetDotnetVersion)-windows</TargetFramework>
+    <AssemblyTitle>WebViewControl WPF</AssemblyTitle>
+    <Description>WebViewControl for WPF powered by CefGlue</Description>
+    <Configuration></Configuration>
+    <Company></Company>
+    <Product>WebViewControl</Product>
+    <Copyright>Copyright ©  2023</Copyright>
+    <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
+    <GenerateDocumentationFile>true</GenerateDocumentationFile>
+    <PackageId>WebViewControl-WPF$(PackageSuffix)</PackageId>
+    <Configurations>Debug;Release;ReleaseAvalonia;ReleaseWPF;ReleaseAvaloniaRemoteDebugSupport</Configurations>
+    <UseWPF>true</UseWPF>
+  </PropertyGroup>
+  
+  <PropertyGroup Condition="'$(Configuration)' == 'ReleaseWPF'">
+    <Optimize>true</Optimize>
+  </PropertyGroup>
+  
+  <ItemGroup>
+    <None Include="app.config" />
+    <None Include="WebViewControl.nuspec">
+      <SubType>Designer</SubType>
+    </None>
+  </ItemGroup>
+  
+  <ItemGroup>
+    <PackageReference PrivateAssets="None" Include="CefGlue.Wpf$(CefGluePackageSuffix)" />
+  </ItemGroup>
+
+</Project>

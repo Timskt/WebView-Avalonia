@@ -1,0 +1,44 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>$(TargetDotnetVersion)</TargetFramework>
+    <OutputPath>$(MSBuildProjectDirectory)\bin\</OutputPath>
+    <CopyLocalLockFileAssemblies>true</CopyLocalLockFileAssemblies>
+    <PlatformTarget>$(Platform)</PlatformTarget>
+    <IsPackable>false</IsPackable>
+    <Configurations>Debug;Release;ReleaseAvalonia;ReleaseWPF;ReleaseAvaloniaRemoteDebugSupport</Configurations>
+    <RuntimeIdentifiers>win-x64;win-arm64</RuntimeIdentifiers>
+    <RollForward>Major</RollForward>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\WebViewControl.Avalonia\WebViewControl.Avalonia.csproj" />
+  </ItemGroup>
+    
+  <ItemGroup>
+    <None Remove="App.xaml" />
+    <None Remove="Resources\dash-folder\EmbeddedJavascriptFile-With-Dashes.js" />
+    <None Remove="Resources\EmbeddedHtml.html" />
+    <None Remove="Resources\EmbeddedJavascriptFile.js" />
+    <None Remove="Resources\ResourceJavascriptFile.js" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <AvaloniaResource  Include="App.xaml">
+      <Generator>MSBuild:Compile</Generator>
+    </AvaloniaResource >
+    <EmbeddedResource Include="Resources\dash-folder\EmbeddedJavascriptFile-With-Dashes.js" />
+    <EmbeddedResource Include="Resources\EmbeddedHtml.html" />
+    <EmbeddedResource Include="Resources\EmbeddedJavascriptFile.js" />
+    <EmbeddedResource Include="Resources\ResourceJavascriptFile.js" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Avalonia.Desktop" />
+    <PackageReference Include="Avalonia.Themes.Simple" />
+    <PackageReference Include="nunit" />
+    <PackageReference Include="NUnit3TestAdapter" />
+    <PackageReference Include="Microsoft.NET.Test.Sdk" />
+  </ItemGroup>
+
+</Project>
