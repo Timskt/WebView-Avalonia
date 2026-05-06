@@ -1,14 +1,10 @@
---- .github/workflows/build-and-pack.yml (原始)
-
-
-+++ .github/workflows/build-and-pack.yml (修改后)
 name: Build and Pack NuGet
 
 on:
   push:
-    branches: [ main, master ]
+    branches: [ main, master,ai-mac-fix ]
   pull_request:
-    branches: [ main, master ]
+    branches: [ main, master,ai-mac-fix ]
   workflow_dispatch:
     inputs:
       configuration:
