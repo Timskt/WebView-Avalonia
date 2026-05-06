@@ -6,14 +6,14 @@
     <AvaloniaVersion>11.0.10</AvaloniaVersion>
   </PropertyGroup>
 
-  <!-- CEF version per OS: Win7 needs CEF 106, macOS/Linux use CEF 120 -->
-  <PropertyGroup Condition="$([MSBuild]::IsOSPlatform('Windows'))">
-    <!-- CEF 106.x is the last version supporting Windows 7 -->
-    <CefGlueVersion>106.5249.19-avalonia11</CefGlueVersion>
-  </PropertyGroup>
-  <PropertyGroup Condition="$([MSBuild]::IsOSPlatform('OSX')) or $([MSBuild]::IsOSPlatform('Linux'))">
-    <!-- CEF 120.x, requires macOS 11+ / Windows 10+ -->
+  <!--
+    CEF version selection:
+    - Default: CEF 120.x (requires macOS 11+ / Windows 10+)
+    - With -p:Win7Compatible=true: CEF 106.x (last version supporting Windows 7)
+  -->
+  <PropertyGroup>
     <CefGlueVersion>120.6099.211</CefGlueVersion>
+    <CefGlueVersion Condition="'$(Win7Compatible)' == 'true'">106.5249.19-avalonia11</CefGlueVersion>
   </PropertyGroup>
 
   <PropertyGroup>
@@ -26,15 +26,18 @@
     <PackageOutputPath>$(MSBuildProjectDirectory)\..\nuget</PackageOutputPath>
   </PropertyGroup>
 
-  <!-- Package version per OS -->
-  <PropertyGroup Condition="$([MSBuild]::IsOSPlatform('Windows'))">
-    <Version>2.106.10-avalonia11-win7</Version>
+  <!-- Package version: default is CEF 120 based -->
+  <PropertyGroup>
+    <Version>3.120.10</Version>
   </PropertyGroup>
   <PropertyGroup Condition="$([MSBuild]::IsOSPlatform('OSX'))">
     <Version>3.120.10-mac</Version>
   </PropertyGroup>
   <PropertyGroup Condition="$([MSBuild]::IsOSPlatform('Linux'))">
-    <Version>3.120.10-mac</Version>
+    <Version>3.120.10-linux</Version>
+  </PropertyGroup>
+  <PropertyGroup Condition="$([MSBuild]::IsOSPlatform('Windows')) and '$(Win7Compatible)' == 'true'">
+    <Version>2.106.10-avalonia11-win7</Version>
   </PropertyGroup>
 
   <PropertyGroup Condition="'$(Platform)' == '' or '$(Platform)' == 'x64'">

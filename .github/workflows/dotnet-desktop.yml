@@ -31,21 +31,40 @@ jobs:
       fail-fast: false
       matrix:
         include:
+          # macOS (CEF 120)
           - os: macos-14
             runtime: osx-arm64
             platform: ARM64
+            label: macos-arm64
           - os: macos-13
             runtime: osx-x64
             platform: x64
+            label: macos-x64
+          # Windows 10+ (CEF 120)
           - os: windows-latest
             runtime: win-x64
             platform: x64
+            label: win10-x64
           - os: windows-latest
             runtime: win-arm64
             platform: ARM64
+            label: win10-arm64
+          # Windows 7 (CEF 106)
+          - os: windows-latest
+            runtime: win-x64
+            platform: x64
+            win7: true
+            label: win7-x64
+          - os: windows-latest
+            runtime: win-arm64
+            platform: ARM64
+            win7: true
+            label: win7-arm64
+          # Linux (CEF 120)
           - os: ubuntu-latest
             runtime: linux-x64
             platform: x64
+            label: linux-x64
 
     steps:
       - name: Checkout code
@@ -66,19 +85,21 @@ jobs:
           dotnet build ${{ env.PROJECT_PATH }} \
             -c ${{ env.CONFIGURATION }} \
             -r ${{ matrix.runtime }} \
-            -p:Platform=${{ matrix.platform }}
+            -p:Platform=${{ matrix.platform }} \
+            ${{ matrix.win7 && '-p:Win7Compatible=true' || '' }}
 
       - name: Pack NuGet package
         run: |
           dotnet pack ${{ env.PROJECT_PATH }} \
             -c ${{ env.CONFIGURATION }} \
             -p:Platform=${{ matrix.platform }} \
+            ${{ matrix.win7 && '-p:Win7Compatible=true' || '' }} \
             --output ./nupkgs
 
       - name: Upload NuGet artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: nupkgs-${{ matrix.os }}-${{ matrix.runtime }}
+          name: nupkgs-${{ matrix.label }}
           path: nupkgs/*.nupkg
           retention-days: 30
 
