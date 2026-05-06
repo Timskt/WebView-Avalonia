@@ -1,0 +1,107 @@
+name: Build and Pack NuGet
+
+on:
+  push:
+    branches: [main, master, ai-mac-fix]
+  pull_request:
+    branches: [main, master, ai-mac-fix]
+  workflow_dispatch:
+    inputs:
+      runtime:
+        description: "Runtime identifier"
+        required: true
+        default: "osx-arm64"
+        type: choice
+        options:
+          - osx-arm64
+          - osx-x64
+          - win-x64
+          - win-arm64
+          - linux-x64
+
+env:
+  DOTNET_VERSION: "8.0.x"
+  PROJECT_PATH: "WebView/WebViewControl.Avalonia/WebViewControl.Avalonia.csproj"
+  CONFIGURATION: "ReleaseAvalonia"
+
+jobs:
+  build-and-pack:
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: macos-14
+            runtime: osx-arm64
+            platform: ARM64
+          - os: macos-13
+            runtime: osx-x64
+            platform: x64
+          - os: windows-latest
+            runtime: win-x64
+            platform: x64
+          - os: windows-latest
+            runtime: win-arm64
+            platform: ARM64
+          - os: ubuntu-latest
+            runtime: linux-x64
+            platform: x64
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup .NET SDK
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: ${{ env.DOTNET_VERSION }}
+
+      - name: Restore dependencies
+        run: |
+          dotnet restore ${{ env.PROJECT_PATH }} \
+            -r ${{ matrix.runtime }}
+
+      - name: Build project
+        run: |
+          dotnet build ${{ env.PROJECT_PATH }} \
+            -c ${{ env.CONFIGURATION }} \
+            -r ${{ matrix.runtime }} \
+            -p:Platform=${{ matrix.platform }}
+
+      - name: Pack NuGet package
+        run: |
+          dotnet pack ${{ env.PROJECT_PATH }} \
+            -c ${{ env.CONFIGURATION }} \
+            -p:Platform=${{ matrix.platform }} \
+            --output ./nupkgs
+
+      - name: Upload NuGet artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: nupkgs-${{ matrix.os }}-${{ matrix.runtime }}
+          path: nupkgs/*.nupkg
+          retention-days: 30
+
+  publish-nuget:
+    needs: build-and-pack
+    runs-on: ubuntu-latest
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    steps:
+      - name: Download all NuGet artifacts
+        uses: actions/download-artifact@v4
+        with:
+          pattern: nupkgs-*
+          merge-multiple: true
+          path: ./nupkgs
+
+      - name: Setup .NET SDK
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: ${{ env.DOTNET_VERSION }}
+
+      - name: Push to NuGet.org
+        run: |
+          dotnet nuget push ./nupkgs/*.nupkg \
+            --api-key ${{ secrets.NUGET_API_KEY }} \
+            --source https://api.nuget.org/v3/index.json \
+            --skip-duplicate
