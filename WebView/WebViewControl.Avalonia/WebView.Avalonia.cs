@@ -32,6 +32,17 @@ namespace WebViewControl {
             VisualChildren.Add(chromium);
             chromium[!FocusableProperty] = this[!FocusableProperty];
             chromium.AddressChanged += (o, address) => ExecuteInUI(() => Address = address);
+
+            // Prevent CEF from intercepting IME text input when WebView is not focused.
+            // On macOS, CEF's native NSView can intercept IME composition events
+            // even when another control (like TextBox) has focus, causing a deadlock.
+            chromium.AddHandler(TextInputEvent, OnChromiumTextInput, handledEventsToo: true);
+        }
+
+        private void OnChromiumTextInput(object sender, TextInputEventArgs e) {
+            if (!IsFocused && !chromium.IsFocused) {
+                e.Handled = true;
+            }
         }
 
         protected override void OnKeyDown(KeyEventArgs e) {
