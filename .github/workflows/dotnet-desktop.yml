@@ -6,18 +6,6 @@ on:
   pull_request:
     branches: [main, master, ai-mac-fix]
   workflow_dispatch:
-    inputs:
-      runtime:
-        description: "Runtime identifier"
-        required: true
-        default: "osx-arm64"
-        type: choice
-        options:
-          - osx-arm64
-          - osx-x64
-          - win-x64
-          - win-arm64
-          - linux-x64
 
 env:
   DOTNET_VERSION: "8.0.x"
@@ -33,38 +21,37 @@ jobs:
         include:
           # macOS (CEF 120)
           - os: macos-14
-            runtime: osx-arm64
             platform: ARM64
             label: macos-arm64
           - os: macos-13
-            runtime: osx-x64
             platform: x64
             label: macos-x64
           # Windows 10+ (CEF 120)
           - os: windows-latest
-            runtime: win-x64
             platform: x64
             label: win10-x64
+            extra_props: ""
           - os: windows-latest
-            runtime: win-arm64
             platform: ARM64
             label: win10-arm64
-          # Windows 7 (CEF 106)
+            extra_props: ""
+          # Windows 7 compatible (CEF 106)
           - os: windows-latest
-            runtime: win-x64
             platform: x64
-            win7: true
             label: win7-x64
+            extra_props: "-p:Win7Compatible=true"
           - os: windows-latest
-            runtime: win-arm64
             platform: ARM64
-            win7: true
             label: win7-arm64
+            extra_props: "-p:Win7Compatible=true"
           # Linux (CEF 120)
           - os: ubuntu-latest
-            runtime: linux-x64
             platform: x64
             label: linux-x64
+
+    defaults:
+      run:
+        shell: bash
 
     steps:
       - name: Checkout code
@@ -76,24 +63,21 @@ jobs:
           dotnet-version: ${{ env.DOTNET_VERSION }}
 
       - name: Restore dependencies
-        run: |
-          dotnet restore ${{ env.PROJECT_PATH }} \
-            -r ${{ matrix.runtime }}
+        run: dotnet restore ${{ env.PROJECT_PATH }}
 
       - name: Build project
         run: |
           dotnet build ${{ env.PROJECT_PATH }} \
             -c ${{ env.CONFIGURATION }} \
-            -r ${{ matrix.runtime }} \
             -p:Platform=${{ matrix.platform }} \
-            ${{ matrix.win7 && '-p:Win7Compatible=true' || '' }}
+            ${{ matrix.extra_props }}
 
       - name: Pack NuGet package
         run: |
           dotnet pack ${{ env.PROJECT_PATH }} \
             -c ${{ env.CONFIGURATION }} \
             -p:Platform=${{ matrix.platform }} \
-            ${{ matrix.win7 && '-p:Win7Compatible=true' || '' }} \
+            ${{ matrix.extra_props }} \
             --output ./nupkgs
 
       - name: Upload NuGet artifacts
@@ -121,6 +105,7 @@ jobs:
           dotnet-version: ${{ env.DOTNET_VERSION }}
 
       - name: Push to NuGet.org
+        shell: bash
         run: |
           dotnet nuget push ./nupkgs/*.nupkg \
             --api-key ${{ secrets.NUGET_API_KEY }} \
