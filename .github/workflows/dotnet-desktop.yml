@@ -2,9 +2,9 @@ name: Build and Pack NuGet
 
 on:
   push:
-    branches: [ main, master,ai-mac-fix ]
+    branches: [ main, master, ai-mac-fix ]
   pull_request:
-    branches: [ main, master,ai-mac-fix ]
+    branches: [ main, master, ai-mac-fix ]
   workflow_dispatch:
     inputs:
       configuration:
@@ -37,9 +37,9 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - os: macos-latest
+          - os: macos-14          # Apple Silicon
             runtime: osx-arm64
-          - os: macos-latest
+          - os: macos-13          # Intel (避免 ARM Mac 交叉编译 x64 的潜在问题)
             runtime: osx-x64
           - os: windows-latest
             runtime: win-x64
@@ -47,32 +47,76 @@ jobs:
             runtime: win-arm64
           - os: ubuntu-latest
             runtime: linux-x64
+
     steps:
-    - name: Checkout code
-      uses: actions/checkout@v4
+      - name: Checkout code
+        uses: actions/checkout@v4
 
-    - name: Setup .NET SDK
-      uses: actions/setup-dotnet@v4
-      with:
-        dotnet-version: ${{ env.DOTNET_VERSION }}
+      - name: Setup .NET SDK
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: ${{ env.DOTNET_VERSION }}
 
-    - name: Set Windows targeting property
-      id: windows_targeting
-      shell: bash
-      run: |
-        if [[ "${{ runner.os }}" != "Windows" && "${{ matrix.runtime }}" == win-* ]]; then
-          echo "ENABLE_WINDOWS_TARGETING=true" >> $GITHUB_OUTPUT
-        else
-          echo "ENABLE_WINDOWS_TARGETING=false" >> $GITHUB_OUTPUT
-        fi
+      # 在非 Windows 系统上启用 Windows 目标构建能力（项目内若含 Windows 目标必须开启）
+      - name: Build and restore
+        shell: bash
+        run: |
+          EXTRA_PROPERTIES=""
+          if [ "${{ runner.os }}" != "Windows" ]; then
+            EXTRA_PROPERTIES="/p:EnableWindowsTargeting=true"
+          fi
 
-    - name: Restore dependencies
-      run: dotnet restore WebView/WebView.sln -r ${{ matrix.runtime }} /p:EnableWindowsTargeting=${{ steps.windows_targeting.outputs.ENABLE_WINDOWS_TARGETING == 'true' && 'true' || 'false' }}
+          dotnet build WebView/WebView.sln \
+            -c ReleaseAvalonia \
+            -r ${{ matrix.runtime }} \
+            $EXTRA_PROPERTIES
 
-    - name: Build solution
-      run: dotnet build WebView/WebView.sln -c ReleaseAvalonia --no-restore -r ${{ matrix.runtime }} /p:EnableWindowsTargeting=${{ steps.windows_targeting.outputs.ENABLE_WINDOWS_TARGETING == 'true' && 'true' || 'false' }}
+      # 打包 NuGet（注意：pack 不能使用 -r 参数）
+      - name: Pack NuGet package for WebViewControl.Avalonia
+        shell: bash
+        run: |
+          EXTRA_PROPERTIES=""
+          if [ "${{ runner.os }}" != "Windows" ]; then
+            EXTRA_PROPERTIES="/p:EnableWindowsTargeting=true"
+          fi
 
-    - name: Pack NuGet package for WebViewControl.Avalonia
-      run: |
-        cd WebView/WebViewControl.Avalonia
-        dotnet pack -c ReleaseAvalonia -r ${{ matrix.runtime }} --output ./nupkgs /p:VersionSuffix=${{ github.run_number }} /p:EnableWindowsTargeting=${{ steps.windows_targeting.outputs.ENABLE_WINDOWS_TARGETING == 'true' && 'true' || 'false' }}
+          cd WebView/WebViewControl.Avalonia
+          dotnet pack \
+            -c ReleaseAvalonia \
+            --output ./nupkgs \
+            /p:VersionSuffix=${{ github.run_number }} \
+            $EXTRA_PROPERTIES
+
+      - name: Upload NuGet artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: nupkgs-${{ matrix.os }}-${{ matrix.runtime }}
+          path: WebView/WebViewControl.Avalonia/nupkgs/*.nupkg
+          retention-days: 30
+
+  publish-nuget:
+    needs: build-and-pack
+    runs-on: macos-latest
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+
+    steps:
+      - name: Download all NuGet artifacts
+        uses: actions/download-artifact@v4
+        with:
+          pattern: nupkgs-*
+          merge-multiple: true
+          path: ./nupkgs
+
+      - name: Setup .NET SDK
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: ${{ env.DOTNET_VERSION }}
+
+      - name: Push to NuGet.org
+        run: |
+          dotnet nuget push ./nupkgs/*.nupkg \
+            --api-key ${{ secrets.NUGET_API_KEY }} \
+            --source https://api.nuget.org/v3/index.json \
+            --skip-duplicate
+        env:
+          NUGET_API_KEY: ${{ secrets.NUGET_API_KEY }}
