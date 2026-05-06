@@ -1,10 +1,14 @@
+--- .github/workflows/build-and-pack.yml (原始)
+
+
++++ .github/workflows/build-and-pack.yml (修改后)
 name: Build and Pack NuGet
 
 on:
   push:
-    branches: [ main, master,ai-mac-fix ]
+    branches: [ main, master ]
   pull_request:
-    branches: [ main, master,ai-mac-fix ]
+    branches: [ main, master ]
   workflow_dispatch:
     inputs:
       configuration:
@@ -34,10 +38,13 @@ jobs:
   build-and-pack:
     runs-on: ${{ matrix.os }}
     strategy:
+      fail-fast: false
       matrix:
-        os: [macos-latest]
-        runtime: [osx-arm64, osx-x64]
         include:
+          - os: macos-latest
+            runtime: osx-arm64
+          - os: macos-latest
+            runtime: osx-x64
           - os: windows-latest
             runtime: win-x64
           - os: windows-latest
@@ -54,16 +61,20 @@ jobs:
       with:
         dotnet-version: ${{ env.DOTNET_VERSION }}
 
+    - name: Enable Windows targeting (for cross-compilation)
+      if: runner.os != 'Windows' && contains(matrix.runtime, 'win')
+      run: echo "EnableWindowsTargeting=true" >> $GITHUB_ENV
+
     - name: Restore dependencies
-      run: dotnet restore WebView/WebView.sln
+      run: dotnet restore WebView/WebView.sln -r ${{ matrix.runtime }}
 
     - name: Build solution
-      run: dotnet build WebView/WebView.sln -c ReleaseAvalonia --no-restore -r ${{ matrix.runtime }}
+      run: dotnet build WebView/WebView.sln -c ReleaseAvalonia --no-restore -r ${{ matrix.runtime }} /p:EnableWindowsTargeting=${{ env.EnableWindowsTargeting }}
 
     - name: Pack NuGet package for WebViewControl.Avalonia
       run: |
         cd WebView/WebViewControl.Avalonia
-        dotnet pack -c ReleaseAvalonia -r ${{ matrix.runtime }} --output ./nupkgs /p:VersionSuffix=${{ github.run_number }}
+        dotnet pack -c ReleaseAvalonia -r ${{ matrix.runtime }} --output ./nupkgs /p:VersionSuffix=${{ github.run_number }} /p:EnableWindowsTargeting=${{ env.EnableWindowsTargeting }}
 
     - name: Upload NuGet artifacts
       uses: actions/upload-artifact@v4
