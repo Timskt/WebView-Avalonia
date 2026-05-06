@@ -37,6 +37,7 @@ namespace WebViewControl {
                 UncaughtExceptionStackSize = 100, // enable stack capture
                 CachePath = settings.CachePath, // enable cache for external resources to speedup loading
                 WindowlessRenderingEnabled = settings.OsrEnabled || RuntimeInformation.IsOSPlatform(OSPlatform.OSX),
+                MultiThreadedMessageLoop = RuntimeInformation.IsOSPlatform(OSPlatform.OSX),
                 RemoteDebuggingPort = settings.GetRemoteDebuggingPort(),
                 UserAgent = settings.UserAgent,
                 BackgroundColor = new CefColor((uint)settings.BackgroundColor.ToArgb())
