@@ -68,4 +68,10 @@
     <PackageReference Include="Microsoft.CSharp" />
     <PackageReference Include="System.Runtime.Loader" />
   </ItemGroup>
+
+  <!-- Include build targets for macOS native library handling -->
+  <ItemGroup>
+    <None Include="build\**\*" Pack="true" PackagePath="build\" />
+    <None Include="buildTransitive\**\*" Pack="true" PackagePath="buildTransitive\" />
+  </ItemGroup>
 </Project>

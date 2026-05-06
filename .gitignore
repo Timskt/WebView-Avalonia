@@ -1,0 +1,23 @@
+```
+# Build artifacts
+build/
+bin/
+obj/
+out/
+dist/
+
+# Dependencies
+node_modules/
+packages/
+
+# OS generated files
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+
+# Temporary files
+*.tmp
+*.temp
+```
