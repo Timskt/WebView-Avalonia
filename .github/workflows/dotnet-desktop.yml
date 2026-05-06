@@ -47,7 +47,6 @@ jobs:
             runtime: win-arm64
           - os: ubuntu-latest
             runtime: linux-x64
-
     steps:
     - name: Checkout code
       uses: actions/checkout@v4
@@ -57,51 +56,23 @@ jobs:
       with:
         dotnet-version: ${{ env.DOTNET_VERSION }}
 
-    - name: Enable Windows targeting (for cross-compilation)
-      if: runner.os != 'Windows' && contains(matrix.runtime, 'win')
-      run: echo "EnableWindowsTargeting=true" >> $GITHUB_ENV
+    - name: Set Windows targeting property
+      id: windows_targeting
+      shell: bash
+      run: |
+        if [[ "${{ runner.os }}" != "Windows" && "${{ matrix.runtime }}" == win-* ]]; then
+          echo "ENABLE_WINDOWS_TARGETING=true" >> $GITHUB_OUTPUT
+        else
+          echo "ENABLE_WINDOWS_TARGETING=false" >> $GITHUB_OUTPUT
+        fi
 
     - name: Restore dependencies
-      run: dotnet restore WebView/WebView.sln -r ${{ matrix.runtime }}
+      run: dotnet restore WebView/WebView.sln -r ${{ matrix.runtime }} /p:EnableWindowsTargeting=${{ steps.windows_targeting.outputs.ENABLE_WINDOWS_TARGETING == 'true' && 'true' || 'false' }}
 
     - name: Build solution
-      run: dotnet build WebView/WebView.sln -c ReleaseAvalonia --no-restore -r ${{ matrix.runtime }} /p:EnableWindowsTargeting=${{ env.EnableWindowsTargeting }}
+      run: dotnet build WebView/WebView.sln -c ReleaseAvalonia --no-restore -r ${{ matrix.runtime }} /p:EnableWindowsTargeting=${{ steps.windows_targeting.outputs.ENABLE_WINDOWS_TARGETING == 'true' && 'true' || 'false' }}
 
     - name: Pack NuGet package for WebViewControl.Avalonia
       run: |
         cd WebView/WebViewControl.Avalonia
-        dotnet pack -c ReleaseAvalonia -r ${{ matrix.runtime }} --output ./nupkgs /p:VersionSuffix=${{ github.run_number }} /p:EnableWindowsTargeting=${{ env.EnableWindowsTargeting }}
-
-    - name: Upload NuGet artifacts
-      uses: actions/upload-artifact@v4
-      with:
-        name: nupkgs-${{ matrix.os }}-${{ matrix.runtime }}
-        path: WebView/WebViewControl.Avalonia/nupkgs/*.nupkg
-        retention-days: 30
-
-  publish-nuget:
-    needs: build-and-pack
-    runs-on: macos-latest
-    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
-
-    steps:
-    - name: Download all NuGet artifacts
-      uses: actions/download-artifact@v4
-      with:
-        pattern: nupkgs-*
-        merge-multiple: true
-        path: ./nupkgs
-
-    - name: Setup .NET SDK
-      uses: actions/setup-dotnet@v4
-      with:
-        dotnet-version: ${{ env.DOTNET_VERSION }}
-
-    - name: Push to NuGet.org
-      run: |
-        dotnet nuget push ./nupkgs/*.nupkg \
-          --api-key ${{ secrets.NUGET_API_KEY }} \
-          --source https://api.nuget.org/v3/index.json \
-          --skip-duplicate
-      env:
-        NUGET_API_KEY: ${{ secrets.NUGET_API_KEY }}
+        dotnet pack -c ReleaseAvalonia -r ${{ matrix.runtime }} --output ./nupkgs /p:VersionSuffix=${{ github.run_number }} /p:EnableWindowsTargeting=${{ steps.windows_targeting.outputs.ENABLE_WINDOWS_TARGETING == 'true' && 'true' || 'false' }}
