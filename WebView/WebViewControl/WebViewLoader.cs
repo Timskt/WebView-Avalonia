@@ -60,6 +60,20 @@ namespace WebViewControl {
             if (settings.EnableVideoAutoplay) {
                 settings.AddCommandLineSwitch("autoplay-policy", "no-user-gesture-required");
             }
+
+            if (RuntimeInformation.IsOSPlatform(OSPlatform.OSX)) {
+                // Combine with CEF's internal --disable-features=FirstPartySets
+                // to also disable TextInputClient which is the OOP IME handling
+                // that causes deadlocks on macOS during composition.
+                settings.AddCommandLineSwitch("disable-features", "FirstPartySets,TextInputClient");
+            }
+
+            if (RuntimeInformation.IsOSPlatform(OSPlatform.OSX)) {
+                // Append our feature to disable, so it combines with CEF's
+                // internal --disable-features=FirstPartySets instead of overwriting.
+                // We set a custom flag that our build target will handle.
+                Environment.SetEnvironmentVariable("WEBVIEW_MAC_IME_FIX", "1");
+            }
             
             CefRuntimeLoader.Initialize(settings: cefSettings, flags: settings.CommandLineSwitches.ToArray(), customSchemes: customSchemes);
 

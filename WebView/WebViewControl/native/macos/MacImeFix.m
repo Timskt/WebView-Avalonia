@@ -1,7 +1,7 @@
 // WebViewControl Mac IME Fix
 // Prevents CEF's global NSEvent monitor from intercepting IME composition
 // events that should go to Avalonia controls (like TextBox), which causes
-// UI deadlocks during Chinese input.
+// UI deadlocks during Chinese input on macOS ARM64.
 //
 // The `__attribute__((constructor))` ensures this runs before CEF
 // initializes its own event monitors.
@@ -10,26 +10,25 @@
 #import <Foundation/Foundation.h>
 #import <AppKit/AppKit.h>
 
-// Store the original implementation
 static id (*original_addLocalMonitor)(id, SEL, NSEventMask, id);
+static id (*original_addGlobalMonitor)(id, SEL, NSEventMask, id);
 
-static id swizzled_addLocalMonitor(id self, SEL _cmd, NSEventMask mask, id handler) {
-    // Allow the call but wrap the handler so it can't block the main thread
-    // during IME composition. We still let the monitor be installed because
-    // CEF needs it for its own keyboard handling when focused.
-    //
-    // The handler gets called for EVERY keyboard event. During IME
-    // composition, CEF's handler may block waiting for IPC to the renderer
-    // process. We prevent this by wrapping the handler to run on a dispatch
-    // queue instead of synchronously.
-    
-    id wrappedHandler = ^NSEvent *(NSEvent *event) {
-        // Return event unmodified for all events - don't let CEF block
-        // the event dispatch during IME composition
-        return event;
-    };
-    
-    return original_addLocalMonitor(self, _cmd, mask, wrappedHandler);
+// Return nil to prevent CEF from installing any event monitor.
+// This is safe because CEF only uses the monitor to forward keyboard
+// events to the renderer, and CefGlue.Avalonia handles keyboard
+// forwarding through Avalonia's input system instead.
+static id swizzled_addMonitor(id self, SEL _cmd, NSEventMask mask, id handler) {
+    // Don't call original - return nil to effectively disable the monitor.
+    // CEF will think the monitor was "installed" but no events will be
+    // intercepted, allowing the Avalonia TextBox to handle IME normally.
+    return nil;
+}
+
+static void swizzleMethod(Class cls, SEL sel, IMP newImp, IMP* origImp) {
+    Method method = class_getClassMethod(cls, sel);
+    if (!method) return;
+    *origImp = method_getImplementation(method);
+    method_setImplementation(method, newImp);
 }
 
 __attribute__((constructor))
@@ -37,12 +36,16 @@ static void macImeFixInit(void) {
     Class nseventClass = NSClassFromString(@"NSEvent");
     if (!nseventClass) return;
     
-    SEL selector = @selector(addLocalMonitorForEventsMatchingMask:handler:);
-    Method method = class_getClassMethod(nseventClass, selector);
-    if (!method) return;
+    // Swizzle both local and global event monitors
+    swizzleMethod(nseventClass,
+                  @selector(addLocalMonitorForEventsMatchingMask:handler:),
+                  (IMP)swizzled_addMonitor,
+                  &original_addLocalMonitor);
     
-    original_addLocalMonitor = (void *)method_getImplementation(method);
-    method_setImplementation(method, (IMP)swizzled_addLocalMonitor);
+    swizzleMethod(nseventClass,
+                  @selector(addGlobalMonitorForEventsMatchingMask:handler:),
+                  (IMP)swizzled_addMonitor,
+                  &original_addGlobalMonitor);
     
-    NSLog(@"[WebViewControl] Patched NSEvent addLocalMonitor to prevent IME deadlock");
+    NSLog(@"[WebViewControl] Disabled NSEvent monitors to prevent IME deadlock");
 }
