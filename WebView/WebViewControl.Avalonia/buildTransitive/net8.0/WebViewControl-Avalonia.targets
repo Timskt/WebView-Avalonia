@@ -4,99 +4,65 @@
     WebViewControl.Avalonia Build Targets
     =====================================
 
-    Handles macOS ObjC class conflicts between libAvaloniaNative.dylib
-    and libcef.dylib. Both implement ExtensionDropdownHandler (a category
-    on NSTextView for macOS Writing Tools), causing spurious casting
-    failures and crashes. The fix strips the conflicting symbols from
-    libcef.dylib and re-signs it with an ad-hoc signature.
+    Resolves macOS ObjC class conflicts between libAvaloniaNative.dylib
+    and libcef.dylib. Both implement ExtensionDropdownHandler (an ObjC
+    class for macOS Writing Tools support on NSTextView), causing the
+    ObjC runtime to warn and potentially causing crashes/freezes when
+    switching input methods.
+
+    The fix: rename the class in libcef.dylib by binary-patching the
+    class name string (ExtensionDropdownHandler → CXtensionDropdownHandler),
+    then re-signing the dylib. This preserves the same string length so
+    the Mach-O binary layout remains intact.
 
     CEF 120.x provides native macOS ARM64 binaries via the
-    cef.redist.osx.arm64 NuGet package, so no Rosetta 2 fallback is needed.
+    cef.redist.osx.arm64 NuGet package.
   -->
 
   <!-- ================================================================ -->
-  <!-- Strip conflicting ObjC symbols from libcef.dylib after build     -->
+  <!-- Rename conflicting ObjC class in libcef.dylib after build        -->
   <!-- ================================================================ -->
-  <Target Name="StripLibCefConflictingSymbols"
+  <Target Name="ResolveLibCefClassConflict"
           AfterTargets="CopyFilesToOutputDirectory"
           Condition="$([MSBuild]::IsOSPlatform('OSX'))">
 
     <PropertyGroup>
       <_LibCefOutputPath>$(OutDir)libcef.dylib</_LibCefOutputPath>
-      <_StripSymbolsFile>$(IntermediateOutputPath)cef_strip_symbols.txt</_StripSymbolsFile>
     </PropertyGroup>
 
-    <!-- Check if libcef.dylib exists in output -->
-    <Exec Command="test -f '$(_LibCefOutputPath)'"
-          IgnoreExitCode="true"
-          ContinueOnError="true"
-          Condition="Exists('$(_LibCefOutputPath)')">
-      <Output TaskParameter="ExitCode" PropertyName="_LibCefExists" />
-    </Exec>
-
-    <Message Condition="'$(_LibCefExists)' != '0'"
-             Importance="Low"
-             Text="libcef.dylib not found, skipping conflict resolution." />
-
-    <!-- Check if ExtensionDropdownHandler ObjC class symbols are exported -->
-    <Exec Condition="'$(_LibCefExists)' == '0'"
-          Command="nm -g '$(_LibCefOutputPath)' 2&gt;/dev/null | grep -q '_OBJC_CLASS_\$_ExtensionDropdownHandler'"
-          IgnoreExitCode="true"
-          ContinueOnError="true">
-      <Output TaskParameter="ExitCode" PropertyName="_HasExtensionDropdownConflict" />
-    </Exec>
-
-    <Message Condition="'$(_LibCefExists)' == '0' and '$(_HasExtensionDropdownConflict)' == '0'"
+    <Message Condition="Exists('$(_LibCefOutputPath)')"
              Importance="High"
-             Text="ExtensionDropdownHandler conflict detected. Stripping symbols from libcef.dylib..." />
+             Text="Patching ObjC class conflicts in libcef.dylib..." />
 
-    <!-- Write symbols list and strip them -->
-    <WriteLinesToFile Condition="'$(_LibCefExists)' == '0' and '$(_HasExtensionDropdownConflict)' == '0'"
-                      File="$(_StripSymbolsFile)"
-                      Lines="_OBJC_CLASS_\$_ExtensionDropdownHandler;_OBJC_METACLASS_\$_ExtensionDropdownHandler"
-                      Overwrite="true" />
-
-    <Exec Condition="'$(_LibCefExists)' == '0' and '$(_HasExtensionDropdownConflict)' == '0'"
-          Command="strip -R '$(_StripSymbolsFile)' '$(_LibCefOutputPath)' &amp;&amp; codesign --force --sign - '$(_LibCefOutputPath)'"
-          IgnoreExitCode="true"
-          ContinueOnError="true">
-      <Output TaskParameter="ExitCode" PropertyName="_LibCefStripResult" />
-    </Exec>
-
-    <Message Condition="'$(_LibCefExists)' == '0' and '$(_HasExtensionDropdownConflict)' == '0' and '$(_LibCefStripResult)' == '0'"
-             Importance="High"
-             Text="Successfully stripped conflicting ObjC symbols from libcef.dylib." />
-
-    <Message Condition="'$(_LibCefExists)' == '0' and '$(_HasExtensionDropdownConflict)' != '0'"
-             Importance="Low"
-             Text="No ExtensionDropdownHandler conflict detected in libcef.dylib." />
-  </Target>
-
-  <!-- ================================================================ -->
-  <!-- Strip conflicting symbols from published libcef.dylib            -->
-  <!-- ================================================================ -->
-  <Target Name="StripLibCefConflictingSymbolsForPublish"
-          AfterTargets="ComputeFilesToPublish"
-          Condition="$([MSBuild]::IsOSPlatform('OSX'))">
-
-    <ItemGroup>
-      <_PublishLibCef Include="@(ResolvedFileToPublish)"
-                      Condition="'%(Filename)%(Extension)' == 'libcef.dylib'" />
-    </ItemGroup>
-
-    <PropertyGroup>
-      <_PublishLibCefPath>@(_PublishLibCef->'%(RootDir)%(Directory)%(Filename)%(Extension)')</_PublishLibCefPath>
-      <_PublishStripFile>$(IntermediateOutputPath)cef_publish_strip.txt</_PublishStripFile>
-    </PropertyGroup>
-
-    <Exec Condition="'$(_PublishLibCefPath)' != '' and Exists('$(_PublishLibCefPath)')"
-          Command="nm -g '$(_PublishLibCefPath)' 2&gt;/dev/null | grep -q '_OBJC_CLASS_\$_ExtensionDropdownHandler' &amp;&amp; printf '_OBJC_CLASS_\$_ExtensionDropdownHandler\n_OBJC_METACLASS_\$_ExtensionDropdownHandler\n' &gt; '$(_PublishStripFile)' &amp;&amp; strip -R '$(_PublishStripFile)' '$(_PublishLibCefPath)' &amp;&amp; codesign --force --sign - '$(_PublishLibCefPath)'"
+    <Exec Condition="Exists('$(_LibCefOutputPath)')"
+          Command="python3 -c &quot;import sys; f=open(sys.argv[1],'r+b'); d=f.read(); i=d.find(b'ExtensionDropdownHandler\x00'); i&gt;=0 and (f.seek(i), f.write(b'CXtensionDropdownHandler\x00'), print('PATCHED')) or print('SKIP'); f.close()&quot; '$(_LibCefOutputPath)' &amp;&amp; codesign --force --sign - '$(_LibCefOutputPath)'"
           IgnoreExitCode="true"
           ContinueOnError="true" />
 
-    <Message Condition="'$(_PublishLibCefPath)' != ''"
+    <Message Condition="Exists('$(_LibCefOutputPath)')"
              Importance="High"
-             Text="Processed published libcef.dylib for ObjC symbol conflicts." />
+             Text="libcef.dylib class conflict resolution complete." />
+  </Target>
+
+  <!-- ================================================================ -->
+  <!-- Rename conflicting class in published libcef.dylib               -->
+  <!-- ================================================================ -->
+  <Target Name="ResolveLibCefClassConflictForPublish"
+          AfterTargets="Publish"
+          Condition="$([MSBuild]::IsOSPlatform('OSX')) and '$(PublishDir)' != ''">
+
+    <PropertyGroup>
+      <_PublishLibCefPath>$(PublishDir)libcef.dylib</_PublishLibCefPath>
+    </PropertyGroup>
+
+    <Exec Condition="Exists('$(_PublishLibCefPath)')"
+          Command="python3 -c &quot;import sys; f=open(sys.argv[1],'r+b'); d=f.read(); i=d.find(b'ExtensionDropdownHandler\x00'); i&gt;=0 and (f.seek(i), f.write(b'CXtensionDropdownHandler\x00'), print('PATCHED')) or print('SKIP'); f.close()&quot; '$(_PublishLibCefPath)' &amp;&amp; codesign --force --sign - '$(_PublishLibCefPath)'"
+          IgnoreExitCode="true"
+          ContinueOnError="true" />
+
+    <Message Condition="Exists('$(_PublishLibCefPath)')"
+              Importance="High"
+              Text="Class conflict resolution applied to published libcef.dylib." />
   </Target>
 
 </Project>
