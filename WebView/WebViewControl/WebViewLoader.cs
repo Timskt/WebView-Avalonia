@@ -29,6 +29,14 @@ namespace WebViewControl {
                 return;
             }
 
+            if (RuntimeInformation.IsOSPlatform(OSPlatform.OSX)) {
+                // Load macOS IME fix dylib before CEF initializes.
+                // This swizzles +[NSEvent addLocalMonitorForEventsMatchingMask:handler:]
+                // to prevent CEF's global keyboard event monitor from intercepting
+                // IME composition events and deadlocking the UI thread.
+                LoadMacImeFix();
+            }
+
             globalSettings = settings;
 
             var cefSettings = new CefSettings {
@@ -81,6 +89,44 @@ namespace WebViewControl {
                 // ignore
             }
         }
+
+        private static void LoadMacImeFix() {
+            var dylibName = "libMacImeFix.dylib";
+
+            // Search in output directory first, then in system paths
+            var basePath = AppDomain.CurrentDomain.BaseDirectory;
+            var dylibPath = Path.Combine(basePath, dylibName);
+
+            if (!File.Exists(dylibPath)) {
+                // Try the publish directory
+                dylibPath = Path.Combine(basePath, dylibName);
+            }
+
+            if (File.Exists(dylibPath)) {
+                var handle = dlopen(dylibPath, 1); // RTLD_LAZY = 1
+                if (handle != IntPtr.Zero) {
+                    return; // __attribute__((constructor)) already ran
+                }
+            }
+
+            // Fallback: load from the Avalonia project's output or package cache
+            // The dylib might be in a different location depending on runtime
+            var searchPaths = new[] {
+                Path.Combine(basePath, "runtimes", "osx-arm64", "native", dylibName),
+                Path.Combine(basePath, "runtimes", "osx", "native", dylibName),
+                dylibName, // dlopen will search standard paths
+            };
+
+            foreach (var path in searchPaths) {
+                if (File.Exists(path)) {
+                    dlopen(path, 1);
+                    return;
+                }
+            }
+        }
+
+        [DllImport("libSystem.dylib")]
+        private static extern IntPtr dlopen(string path, int mode);
 
     }
 }

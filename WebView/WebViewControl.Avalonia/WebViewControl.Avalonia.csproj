@@ -79,4 +79,20 @@
           PackagePath="buildTransitive\net8.0\WebViewControl-Avalonia$(PackageSuffix).targets"
           Condition="'$(PackageSuffix)' != ''" />
   </ItemGroup>
+
+  <!-- macOS IME fix native dylib -->
+  <ItemGroup>
+    <Content Include="..\WebViewControl\native\macos\libMacImeFix.dylib"
+             Condition="Exists('..\WebViewControl\native\macos\libMacImeFix.dylib')">
+      <PackagePath>runtimes/osx-arm64/native/libMacImeFix.dylib</PackagePath>
+      <Pack>true</Pack>
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="..\WebViewControl\native\macos\libMacImeFix.dylib"
+             Condition="Exists('..\WebViewControl\native\macos\libMacImeFix.dylib')">
+      <PackagePath>runtimes/osx-x64/native/libMacImeFix.dylib</PackagePath>
+      <Pack>true</Pack>
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+  </ItemGroup>
 </Project>
