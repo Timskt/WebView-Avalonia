@@ -73,5 +73,10 @@
   <ItemGroup>
     <None Include="build\**\*" Pack="true" PackagePath="build\" />
     <None Include="buildTransitive\**\*" Pack="true" PackagePath="buildTransitive\" />
+    <!-- Also pack with package suffix for ARM64 etc. to match NuGet naming convention -->
+    <None Include="buildTransitive\net8.0\WebViewControl-Avalonia.targets"
+          Pack="true"
+          PackagePath="buildTransitive\net8.0\WebViewControl-Avalonia$(PackageSuffix).targets"
+          Condition="'$(PackageSuffix)' != ''" />
   </ItemGroup>
 </Project>
