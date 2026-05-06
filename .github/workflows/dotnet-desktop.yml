@@ -1,0 +1,100 @@
+name: Build and Pack NuGet
+
+on:
+  push:
+    branches: [ main, master,ai-mac-fix ]
+  pull_request:
+    branches: [ main, master,ai-mac-fix ]
+  workflow_dispatch:
+    inputs:
+      configuration:
+        description: 'Build configuration'
+        required: true
+        default: 'ReleaseAvalonia'
+        type: choice
+        options:
+          - ReleaseAvalonia
+          - Debug
+      runtime:
+        description: 'Runtime identifier'
+        required: true
+        default: 'osx-arm64'
+        type: choice
+        options:
+          - osx-arm64
+          - osx-x64
+          - win-x64
+          - win-arm64
+          - linux-x64
+
+env:
+  DOTNET_VERSION: '8.0.x'
+
+jobs:
+  build-and-pack:
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [macos-latest]
+        runtime: [osx-arm64, osx-x64]
+        include:
+          - os: windows-latest
+            runtime: win-x64
+          - os: windows-latest
+            runtime: win-arm64
+          - os: ubuntu-latest
+            runtime: linux-x64
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Setup .NET SDK
+      uses: actions/setup-dotnet@v4
+      with:
+        dotnet-version: ${{ env.DOTNET_VERSION }}
+
+    - name: Restore dependencies
+      run: dotnet restore WebView/WebView.sln
+
+    - name: Build solution
+      run: dotnet build WebView/WebView.sln -c ReleaseAvalonia --no-restore -r ${{ matrix.runtime }}
+
+    - name: Pack NuGet package for WebViewControl.Avalonia
+      run: |
+        cd WebView/WebViewControl.Avalonia
+        dotnet pack -c ReleaseAvalonia -r ${{ matrix.runtime }} --output ./nupkgs /p:VersionSuffix=${{ github.run_number }}
+
+    - name: Upload NuGet artifacts
+      uses: actions/upload-artifact@v4
+      with:
+        name: nupkgs-${{ matrix.os }}-${{ matrix.runtime }}
+        path: WebView/WebViewControl.Avalonia/nupkgs/*.nupkg
+        retention-days: 30
+
+  publish-nuget:
+    needs: build-and-pack
+    runs-on: macos-latest
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+
+    steps:
+    - name: Download all NuGet artifacts
+      uses: actions/download-artifact@v4
+      with:
+        pattern: nupkgs-*
+        merge-multiple: true
+        path: ./nupkgs
+
+    - name: Setup .NET SDK
+      uses: actions/setup-dotnet@v4
+      with:
+        dotnet-version: ${{ env.DOTNET_VERSION }}
+
+    - name: Push to NuGet.org
+      run: |
+        dotnet nuget push ./nupkgs/*.nupkg \
+          --api-key ${{ secrets.NUGET_API_KEY }} \
+          --source https://api.nuget.org/v3/index.json \
+          --skip-duplicate
+      env:
+        NUGET_API_KEY: ${{ secrets.NUGET_API_KEY }}
