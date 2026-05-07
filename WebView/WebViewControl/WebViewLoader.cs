@@ -68,6 +68,14 @@ namespace WebViewControl {
                 settings.AddCommandLineSwitch("disable-features", "FirstPartySets,TextInputClient");
             }
 
+            if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows) && 
+                RuntimeInformation.ProcessArchitecture == Architecture.Arm64) {
+                // On Windows ARM64, disable TextInputClient to prevent IME deadlocks
+                // when switching input methods while WebView is present but not focused.
+                // This fixes the issue where switching to Chinese IME causes the app to freeze.
+                settings.AddCommandLineSwitch("disable-features", "TextInputClient");
+            }
+
             if (RuntimeInformation.IsOSPlatform(OSPlatform.OSX)) {
                 // Append our feature to disable, so it combines with CEF's
                 // internal --disable-features=FirstPartySets instead of overwriting.
