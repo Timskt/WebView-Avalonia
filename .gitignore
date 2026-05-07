@@ -1,68 +1,66 @@
 ```
-# Build artifacts
-*.dll
-*.exe
-*.pdb
-*.so
-*.dylib
-*.a
-*.lib
-*.obj
+# Compiled and build artifacts
+*.pyc
+__pycache__/
 *.o
-*.class
-*.jar
-*.war
-*.ear
-*.apk
-*.app
-*.out
+*.obj
+dist/
+build/
+target/
 
 # Dependencies
-node_modules/
-venv/
 .venv/
-.env
-.env.local
-.env.*
+venv/
+node_modules/
+.mypy_cache/
+.pytest_cache/
+.gradle/
 
-# IDE files
-.vscode/
-.idea/
+# Logs and temp files
+*.log
+*.tmp
 *.swp
 *.swo
-*.tmp
-*.log
 
-# OS files
+# Environment
+.env
+.env.local
+*.env.*
+
+# Editors
+.vscode/
+.idea/
+
+# System files
 .DS_Store
 Thumbs.db
 
-# Python specific
-__pycache__/
-*.pyc
-*.pyo
-.Python
-*.so
+# Coverage
+coverage/
+htmlcov/
+.coverage
 
-# Dotnet specific
-bin/
-obj/
-out/
-
-# Java specific
-target/
-.gradle/
-*.class
-*.jar
-*.war
-*.ear
-
-# C# specific
-[Bb]in/
-[Oo]bj/
-[Tt]est[Rr]esults/
-*.userprefs
-
-# Avalonia specific
-AvaloniaResources/
+# Compressed files
+*.zip
+*.gz
+*.tar
+*.tgz
+*.bz2
+*.xz
+*.7z
+*.rar
+*.zst
+*.lz4
+*.lzh
+*.cab
+*.arj
+*.rpm
+*.deb
+*.Z
+*.lz
+*.lzo
+*.tar.gz
+*.tar.bz2
+*.tar.xz
+*.tar.zst
 ```
