@@ -51,7 +51,16 @@ namespace WebViewControl {
                 // Another control has focus, don't intercept the input
                 return;
             }
+
+            // On macOS, setting e.Handled = true here can cause a deadlock with the Input Method Kit (IMK).
+            // Specifically, "error messaging the mach port for IMKCFRunLoopWakeUpReliable" occurs when
+            // the IME state gets out of sync during rapid editing (e.g., deleting and re-typing).
+            // By not marking the event as handled, we allow the system to perform necessary cleanup
+            // and state synchronization for the NSTextInputClient protocol implemented by CEF's NSView.
+            // The actual key input is still processed by CEF via lower-level keyboard events.
+#if !__MACOS__
             e.Handled = true;
+#endif
         }
 
         protected override void OnKeyDown(KeyEventArgs e) {
