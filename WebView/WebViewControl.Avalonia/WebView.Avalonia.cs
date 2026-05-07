@@ -51,7 +51,30 @@ namespace WebViewControl {
                 // Another control has focus, don't intercept the input
                 return;
             }
+
+            // CRITICAL FIX for macOS IME deadlock:
+            // On macOS, we MUST NOT mark TextInputEvent as handled, even when WebView has focus.
+            // The error "messaging the mach port for IMKCFRunLoopWakeUpReliable" occurs because:
+            // 1. CEF's NSView implements NSTextInputClient protocol for IME support
+            // 2. When e.Handled = true, it prevents the system from completing necessary
+            //    IMK state synchronization and cleanup during rapid editing operations
+            // 3. This causes the IMK daemon to wait indefinitely for a response that never comes,
+            //    resulting in a Mach Port communication timeout and UI freeze
+            // 
+            // The actual text input is still correctly processed by CEF through:
+            // - Lower-level keyboard events (KeyDown/KeyUp) which are not affected
+            // - Direct NSTextInputClient methods called by the system on the NSView
+            //
+            // By letting the TextInputEvent propagate naturally, we allow:
+            // - Proper IMK state management during composition
+            // - Correct handling of delete/retype sequences
+            // - No interference with CEF's native input handling
+            //
+            // On Windows, setting e.Handled = true is safe because the IME architecture
+            // doesn't rely on this event for state synchronization.
+#if !__MACOS__
             e.Handled = true;
+#endif
         }
 
         protected override void OnKeyDown(KeyEventArgs e) {
