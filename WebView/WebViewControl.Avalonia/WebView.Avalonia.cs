@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Runtime.ExceptionServices;
 using Avalonia;
 using Avalonia.Controls;
