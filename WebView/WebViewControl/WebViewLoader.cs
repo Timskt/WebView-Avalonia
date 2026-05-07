@@ -22,6 +22,7 @@ namespace WebViewControl {
         };
 
         private static GlobalSettings globalSettings;
+        private static IntPtr macImeFixHandle;
 
         [MethodImpl(MethodImplOptions.NoInlining)]
         public static void Initialize(GlobalSettings settings) {
@@ -31,10 +32,9 @@ namespace WebViewControl {
 
             if (RuntimeInformation.IsOSPlatform(OSPlatform.OSX)) {
                 // Load macOS IME fix dylib before CEF initializes.
-                // This swizzles +[NSEvent addLocalMonitorForEventsMatchingMask:handler:]
-                // to prevent CEF's global keyboard event monitor from intercepting
-                // IME composition events and deadlocking the UI thread.
-                LoadMacImeFix();
+                // Phase 1 (constructor): Swizzles NSEvent monitors and NSWindow makeFirstResponder:
+                // Phase 2 (macImeFixPostInit): Neutralizes CEF's NSView NSTextInputClient methods
+                macImeFixHandle = LoadMacImeFix();
             }
 
             globalSettings = settings;
@@ -66,6 +66,10 @@ namespace WebViewControl {
                 // to also disable TextInputClient which is the OOP IME handling
                 // that causes deadlocks on macOS during composition.
                 settings.AddCommandLineSwitch("disable-features", "FirstPartySets,TextInputClient");
+                
+                // Disable GPU rendering to prevent GPU sync deadlocks during IME
+                settings.AddCommandLineSwitch("disable-gpu", null);
+                settings.AddCommandLineSwitch("disable-gpu-compositing", null);
             }
 
             if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows) && 
@@ -84,6 +88,19 @@ namespace WebViewControl {
             }
             
             CefRuntimeLoader.Initialize(settings: cefSettings, flags: settings.CommandLineSwitches.ToArray(), customSchemes: customSchemes);
+
+            // Phase 2: After CEF init, neutralize CEF's NSView classes that implement
+            // NSTextInputClient. Delayed to allow CEF's NSView classes to fully initialize.
+            if (RuntimeInformation.IsOSPlatform(OSPlatform.OSX) && macImeFixHandle != IntPtr.Zero) {
+                System.Threading.Tasks.Task.Run(async () => {
+                    await System.Threading.Tasks.Task.Delay(2000);
+                    try {
+                        CallMacImeFixPostInit();
+                    } catch {
+                        // Non-critical - best effort
+                    }
+                });
+            }
 
             AppDomain.CurrentDomain.ProcessExit += delegate { Cleanup(); };
         }
@@ -111,43 +128,63 @@ namespace WebViewControl {
             }
         }
 
-        private static void LoadMacImeFix() {
+        private static IntPtr LoadMacImeFix() {
             var dylibName = "libMacImeFix.dylib";
-
-            // Search in output directory first, then in system paths
             var basePath = AppDomain.CurrentDomain.BaseDirectory;
-            var dylibPath = Path.Combine(basePath, dylibName);
 
-            if (!File.Exists(dylibPath)) {
-                // Try the publish directory
-                dylibPath = Path.Combine(basePath, dylibName);
+            // Search paths in order of preference:
+            // 1. Output directory (where .NET SDK copies native runtime assets)
+            // 2. Runtime-specific native directories (NuGet package resolution)
+            // 3. Standard system dlopen search
+            var searchPaths = new List<string>();
+
+            // Primary: output directory
+            searchPaths.Add(Path.Combine(basePath, dylibName));
+
+            // Fallback: runtime identifier-specific native directories
+            var rids = RuntimeInformation.ProcessArchitecture == Architecture.Arm64
+                ? new[] { "osx-arm64", "osx" }
+                : new[] { "osx-x64", "osx" };
+            foreach (var rid in rids) {
+                searchPaths.Add(Path.Combine(basePath, "runtimes", rid, "native", dylibName));
             }
 
-            if (File.Exists(dylibPath)) {
-                var handle = dlopen(dylibPath, 1); // RTLD_LAZY = 1
-                if (handle != IntPtr.Zero) {
-                    return; // __attribute__((constructor)) already ran
-                }
-            }
-
-            // Fallback: load from the Avalonia project's output or package cache
-            // The dylib might be in a different location depending on runtime
-            var searchPaths = new[] {
-                Path.Combine(basePath, "runtimes", "osx-arm64", "native", dylibName),
-                Path.Combine(basePath, "runtimes", "osx", "native", dylibName),
-                dylibName, // dlopen will search standard paths
-            };
+            // Standard dlopen search (last resort)
+            searchPaths.Add(dylibName);
 
             foreach (var path in searchPaths) {
                 if (File.Exists(path)) {
-                    dlopen(path, 1);
-                    return;
+                    var handle = dlopen(path, 1); // RTLD_LAZY = 1
+                    if (handle != IntPtr.Zero) {
+                        return handle; // __attribute__((constructor)) already ran
+                    }
                 }
+            }
+
+            return IntPtr.Zero;
+        }
+
+        private static void CallMacImeFixPostInit() {
+            // Phase 2: Call macImeFixPostInit() to scan for and neutralize
+            // CEF's NSView classes that implement NSTextInputClient.
+            // This must be called AFTER CefRuntimeLoader.Initialize() because
+            // CEF's ObjC classes are registered when libcef.dylib is loaded.
+            var symbolPtr = dlsym(macImeFixHandle, "macImeFixPostInit");
+            if (symbolPtr != IntPtr.Zero) {
+                var postInit = (MacImeFixPostInitDelegate)Marshal.GetDelegateForFunctionPointer(
+                    symbolPtr, typeof(MacImeFixPostInitDelegate));
+                postInit();
             }
         }
 
+        [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
+        private delegate void MacImeFixPostInitDelegate();
+
         [DllImport("libSystem.dylib")]
         private static extern IntPtr dlopen(string path, int mode);
+
+        [DllImport("libSystem.dylib")]
+        private static extern IntPtr dlsym(IntPtr handle, string symbol);
 
     }
 }
