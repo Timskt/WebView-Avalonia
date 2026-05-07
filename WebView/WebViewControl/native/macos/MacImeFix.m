@@ -16,10 +16,14 @@
 #import <Foundation/Foundation.h>
 #import <AppKit/AppKit.h>
 
+#pragma mark - NSEvent Monitor Swizzle (Class Methods)
+
 static id swizzled_addMonitor(id self, SEL _cmd, NSEventMask mask, id handler) {
 #pragma unused(self, _cmd, mask, handler)
     return nil;
 }
+
+#pragma mark - NSTextInputClient No-Ops (Instance Methods)
 
 static BOOL swizzled_acceptsFirstResponder_noop(id self, SEL _cmd) {
 #pragma unused(self, _cmd)
@@ -69,12 +73,58 @@ static void swizzled_doCommandBySelector_noop(id self, SEL _cmd, SEL selector) {
 #pragma unused(self, _cmd, selector)
 }
 
+#pragma mark - NSWindow makeFirstResponder: Swizzle
+
+static BOOL (*original_makeFirstResponder)(id self, SEL _cmd, NSResponder *responder);
+
+static BOOL swizzled_makeFirstResponder(id self, SEL _cmd, NSResponder *responder) {
+    static Class rwhvcClass = nil;
+    static dispatch_once_t onceToken;
+    dispatch_once(&onceToken, ^{
+        rwhvcClass = objc_lookUpClass("RenderWidgetHostViewCocoa");
+    });
+
+    if (rwhvcClass && responder) {
+        // Check if the proposed responder is a RWVC or a descendant
+        if ([responder isKindOfClass:rwhvcClass]) {
+            NSLog(@"[WebViewControl] Blocked makeFirstResponder: RenderWidgetHostViewCocoa");
+            return NO;
+        }
+        // Walk up the responder chain to catch RWVC ancestors
+        NSResponder *check = responder;
+        while ((check = [check nextResponder])) {
+            if ([check isKindOfClass:rwhvcClass]) {
+                NSLog(@"[WebViewControl] Blocked makeFirstResponder: RWVC (ancestor)");
+                return NO;
+            }
+        }
+    }
+
+    return original_makeFirstResponder(self, _cmd, responder);
+}
+
+#pragma mark - Swizzle Helpers
+
 static void installSwizzle(Class cls, SEL sel, IMP newImpl) {
+    // Try instance method first (for - methods like NSTextInputClient),
+    // then class method (for + methods like NSEvent addLocalMonitor).
     Method method = class_getInstanceMethod(cls, sel);
+    if (!method) {
+        method = class_getClassMethod(cls, sel);
+    }
     if (!method) return;
-    if (class_getMethodImplementation(cls, sel) == newImpl) return;
+    if (method_getImplementation(method) == newImpl) return;
     method_setImplementation(method, newImpl);
 }
+
+static void installSwizzleWithOriginal(Class cls, SEL sel, IMP newImpl, IMP *originalOut) {
+    Method method = class_getInstanceMethod(cls, sel);
+    if (!method) return;
+    *originalOut = method_getImplementation(method);
+    method_setImplementation(method, newImpl);
+}
+
+#pragma mark - Entry Points
 
 __attribute__((constructor))
 static void macImeFixInit(void) {
@@ -88,9 +138,7 @@ void macImeFixPostInit(void) {
     @autoreleasepool {
         NSLog(@"[WebViewControl] macImeFixPostInit: applying IME fixes...");
 
-        // Phase 1: Disable CEF's NSEvent keyboard monitors to prevent
-        // them from intercepting IME composition events.
-        // Must be done AFTER CEF init to avoid __NSGenericDeallocHandler crash.
+        // Phase 1: Disable CEF's NSEvent keyboard monitors
         Class nseventClass = NSClassFromString(@"NSEvent");
         if (nseventClass) {
             installSwizzle(nseventClass, @selector(addLocalMonitorForEventsMatchingMask:handler:), (IMP)swizzled_addMonitor);
@@ -98,14 +146,20 @@ void macImeFixPostInit(void) {
             NSLog(@"[WebViewControl] Swizzled NSEvent monitors");
         }
 
-        // Phase 2: Neutralize CEF's RenderWidgetHostViewCocoa which implements
-        // NSTextInputClient. In OSR mode this view doesn't need to handle IME,
-        // but it can still become firstResponder and intercept IME events,
-        // causing deadlocks when a TextBox is also present.
+        // Phase 2: Prevent CEF's RenderWidgetHostViewCocoa from becoming
+        // firstResponder via NSWindow makeFirstResponder: swizzle.
+        Class nsWindowClass = [NSWindow class];
+        if (nsWindowClass) {
+            installSwizzleWithOriginal(nsWindowClass, @selector(makeFirstResponder:),
+                                       (IMP)swizzled_makeFirstResponder, (IMP *)&original_makeFirstResponder);
+            NSLog(@"[WebViewControl] Swizzled NSWindow makeFirstResponder");
+        }
+
+        // Phase 3: Neutralize RenderWidgetHostViewCocoa's NSTextInputClient
+        // methods so the IME system ignores it.
         Class rwhvcClass = objc_lookUpClass("RenderWidgetHostViewCocoa");
         if (rwhvcClass) {
             NSLog(@"[WebViewControl] Neutralizing RenderWidgetHostViewCocoa NSTextInputClient");
-
             installSwizzle(rwhvcClass, @selector(acceptsFirstResponder), (IMP)swizzled_acceptsFirstResponder_noop);
             installSwizzle(rwhvcClass, @selector(hasMarkedText), (IMP)swizzled_hasMarkedText_noop);
             installSwizzle(rwhvcClass, @selector(insertText:replacementRange:), (IMP)swizzled_insertText_noop);
