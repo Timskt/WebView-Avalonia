@@ -1,28 +1,68 @@
+```
 # Build artifacts
-build/
-bin/
-obj/
-out/
-dist/
+*.dll
+*.exe
+*.pdb
+*.so
+*.dylib
+*.a
+*.lib
+*.obj
+*.o
+*.class
+*.jar
+*.war
+*.ear
+*.apk
+*.app
+*.out
 
 # Dependencies
 node_modules/
-packages/
+venv/
+.venv/
+.env
+.env.local
+.env.*
 
-# NuGet packages (local restore)
-**/packages/
+# IDE files
+.vscode/
+.idea/
+*.swp
+*.swo
+*.tmp
+*.log
 
-# OS generated files
+# OS files
 .DS_Store
 Thumbs.db
 
-# Logs
-*.log
+# Python specific
+__pycache__/
+*.pyc
+*.pyo
+.Python
+*.so
 
-# Temporary files
-*.tmp
-*.temp
+# Dotnet specific
+bin/
+obj/
+out/
 
-# NuGet output
-nuget/
-*.nupkg
+# Java specific
+target/
+.gradle/
+*.class
+*.jar
+*.war
+*.ear
+
+# C# specific
+[Bb]in/
+[Oo]bj/
+[Tt]est[Rr]esults/
+*.userprefs
+
+# Avalonia specific
+AvaloniaResources/
+```
