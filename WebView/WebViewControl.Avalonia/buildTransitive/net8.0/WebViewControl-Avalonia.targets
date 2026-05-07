@@ -45,6 +45,39 @@
   </Target>
 
   <!-- ================================================================ -->
+  <!-- Copy libMacImeFix.dylib to output on macOS                       -->
+  <!-- ================================================================ -->
+  <!-- The .NET SDK only copies native runtime files when the consumer  -->
+  <!-- specifies a RuntimeIdentifier. This target ensures libMacImeFix  -->
+  <!-- is always deployed for macOS framework-dependent builds.         -->
+  <!-- The dylib is a universal binary (arm64 + x64), so either arch    -->
+  <!-- is valid on both Apple Silicon and Intel Macs.                   -->
+  <!-- ================================================================ -->
+  <Target Name="CopyMacImeFixDylib"
+          AfterTargets="CopyFilesToOutputDirectory"
+          Condition="$([MSBuild]::IsOSPlatform('OSX'))">
+
+    <PropertyGroup>
+      <_MacImeFixRid Condition="'$(RuntimeIdentifier)' != ''">$(RuntimeIdentifier)</_MacImeFixRid>
+      <_MacImeFixRid Condition="'$(_MacImeFixRid)' == '' And '$([System.Runtime.InteropServices.RuntimeInformation]::ProcessArchitecture)' == 'ARM64'">osx-arm64</_MacImeFixRid>
+      <_MacImeFixRid Condition="'$(_MacImeFixRid)' == ''">osx-x64</_MacImeFixRid>
+    </PropertyGroup>
+
+    <PropertyGroup>
+      <_MacImeFixDylibSource>$(MSBuildThisFileDirectory)../../runtimes/$(_MacImeFixRid)/native/libMacImeFix.dylib</_MacImeFixDylibSource>
+    </PropertyGroup>
+
+    <Copy SourceFiles="$(_MacImeFixDylibSource)"
+          DestinationFolder="$(OutDir)"
+          SkipUnchangedFiles="true"
+          Condition="Exists('$(_MacImeFixDylibSource)') And !Exists('$(OutDir)libMacImeFix.dylib')" />
+
+    <Message Importance="High"
+             Condition="Exists('$(OutDir)libMacImeFix.dylib')"
+             Text="libMacImeFix.dylib deployed to output." />
+  </Target>
+
+  <!-- ================================================================ -->
   <!-- Rename conflicting class in published libcef.dylib               -->
   <!-- ================================================================ -->
   <Target Name="ResolveLibCefClassConflictForPublish"
