@@ -1,65 +1,63 @@
-```
-# Build artifacts
-*.o
+```csharp
+// Compiled and build artifacts
 *.obj
+*.exe
 *.dll
 *.so
 *.a
-*.exe
+*.lib
+*.pdb
+*.ilk
+*.exp
 *.out
 
-# Dependencies
-node_modules/
-venv/
-.venv/
-__pycache__/
-.mypy_cache/
-.pytest_cache/
-target/
-.gradle/
-
-# Editors
+// Dependencies
+packages/
+bin/
+obj/
+.vs/
 .vscode/
 .idea/
-*.swp
-*.swo
 
-# System
-.DS_Store
-Thumbs.db
+// Logs and temp files
+*.log
+*.tmp
+*.temp
+*.cache
+
+// User-specific files
+*.user
+*.userosscache
+*.suo
+*.userprefs
+
+// Build results
+Debug/
+Release/
+x64/
+x86/
+build/
+dist/
+
+// Environment
 .env
 .env.local
 *.env.*
 
-# Logs
-*.log
+// OS generated files
+.DS_Store
+Thumbs.db
+desktop.ini
 
-# Coverage
+// Testing
 coverage/
 htmlcov/
-.coverage
+*.coverage
+.nyc_output/
 
-# Compressed files
-*.zip
-*.gz
-*.tar
-*.tgz
-*.bz2
-*.xz
-*.7z
-*.rar
-*.zst
-*.lz4
-*.lzh
-*.cab
-*.arj
-*.rpm
-*.deb
-*.Z
-*.lz
-*.lzo
-*.tar.gz
-*.tar.bz2
-*.tar.xz
-*.tar.zst
+// Other common ignores
+*.swp
+*.swo
+*~
+.DS_Store*
 ```

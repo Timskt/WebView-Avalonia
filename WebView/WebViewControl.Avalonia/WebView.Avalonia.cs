@@ -44,8 +44,11 @@ namespace WebViewControl {
 
         private void OnChromiumTextInput(object sender, TextInputEventArgs e) {
             // Only handle the event if WebView or chromium has focus.
-            // If neither has focus, let the event propagate to the actual focused control.
-            if (!IsFocused && !chromium.IsFocused) {
+            // If another control (like TextBox) has focus, let the event propagate
+            // to avoid intercepting IME input and causing deadlocks.
+            var focusedElement = TopLevel.GetTopLevel(this)?.FocusManager?.GetFocusedElement();
+            if (focusedElement != this && focusedElement != chromium) {
+                // Another control has focus, don't intercept the input
                 return;
             }
             e.Handled = true;
