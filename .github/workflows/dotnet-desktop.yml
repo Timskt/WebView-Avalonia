@@ -2,15 +2,34 @@ name: Build and Pack NuGet
 
 on:
   push:
-    branches: [main, master, ai-mac-fix]
+    branches: [ main, master, ai-mac-fix ]
   pull_request:
-    branches: [main, master, ai-mac-fix]
+    branches: [ main, master, ai-mac-fix ]
   workflow_dispatch:
+    inputs:
+      configuration:
+        description: 'Build configuration'
+        required: true
+        default: 'ReleaseAvalonia'
+        type: choice
+        options:
+          - ReleaseAvalonia
+          - Debug
+      runtime:
+        description: 'Runtime identifier'
+        required: true
+        default: 'osx-arm64'
+        type: choice
+        options:
+          - osx-arm64
+          - osx-x64
+          - win-x64
+          - win-arm64
+          - linux-x64
 
 env:
-  DOTNET_VERSION: "8.0.x"
-  PROJECT_PATH: "WebView/WebViewControl.Avalonia/WebViewControl.Avalonia.csproj"
-  CONFIGURATION: "ReleaseAvalonia"
+  DOTNET_VERSION: '8.0.x'
+  PROJECT_PATH: 'WebView/WebViewControl.Avalonia/WebViewControl.Avalonia.csproj'
 
 jobs:
   build-and-pack:
@@ -19,39 +38,16 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          # macOS (CEF 120)
-          - os: macos-14
-            platform: ARM64
-            label: macos-arm64
-          - os: macos-13
-            platform: x64
-            label: macos-x64
-          # Windows 10+ (CEF 120)
+          - os: macos-14          # Apple Silicon
+            runtime: osx-arm64
+          - os: macos-13          # Intel (避免 ARM Mac 交叉编译 x64 的潜在问题)
+            runtime: osx-x64
           - os: windows-latest
-            platform: x64
-            label: win10-x64
-            extra_props: ""
+            runtime: win-x64
           - os: windows-latest
-            platform: ARM64
-            label: win10-arm64
-            extra_props: ""
-          # Windows 7 compatible (CEF 106)
-          - os: windows-latest
-            platform: x64
-            label: win7-x64
-            extra_props: "-p:Win7Compatible=true"
-          - os: windows-latest
-            platform: ARM64
-            label: win7-arm64
-            extra_props: "-p:Win7Compatible=true"
-          # Linux (CEF 120)
+            runtime: win-arm64
           - os: ubuntu-latest
-            platform: x64
-            label: linux-x64
-
-    defaults:
-      run:
-        shell: bash
+            runtime: linux-x64
 
     steps:
       - name: Checkout code
@@ -62,35 +58,47 @@ jobs:
         with:
           dotnet-version: ${{ env.DOTNET_VERSION }}
 
-      - name: Restore dependencies
-        run: dotnet restore ${{ env.PROJECT_PATH }}
-
+      # 构建项目（注意：只能对 .csproj 指定 -r）
       - name: Build project
+        shell: bash
         run: |
-          dotnet build ${{ env.PROJECT_PATH }} \
-            -c ${{ env.CONFIGURATION }} \
-            -p:Platform=${{ matrix.platform }} \
-            ${{ matrix.extra_props }}
+          EXTRA_PROPERTIES=""
+          if [ "${{ runner.os }}" != "Windows" ]; then
+            EXTRA_PROPERTIES="/p:EnableWindowsTargeting=true"
+          fi
 
+          dotnet build ${{ env.PROJECT_PATH }} \
+            -c ReleaseAvalonia \
+            -r ${{ matrix.runtime }} \
+            $EXTRA_PROPERTIES
+
+      # 打包（pack 不接受 -r，但需要 EnableWindowsTargeting 以避免 Windows 目标错误）
       - name: Pack NuGet package
+        shell: bash
         run: |
+          EXTRA_PROPERTIES=""
+          if [ "${{ runner.os }}" != "Windows" ]; then
+            EXTRA_PROPERTIES="/p:EnableWindowsTargeting=true"
+          fi
+
           dotnet pack ${{ env.PROJECT_PATH }} \
-            -c ${{ env.CONFIGURATION }} \
-            -p:Platform=${{ matrix.platform }} \
-            ${{ matrix.extra_props }} \
-            --output ./nupkgs
+            -c ReleaseAvalonia \
+            --output ./nupkgs \
+            /p:VersionSuffix=${{ github.run_number }} \
+            $EXTRA_PROPERTIES
 
       - name: Upload NuGet artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: nupkgs-${{ matrix.label }}
+          name: nupkgs-${{ matrix.os }}-${{ matrix.runtime }}
           path: nupkgs/*.nupkg
           retention-days: 30
 
   publish-nuget:
     needs: build-and-pack
-    runs-on: ubuntu-latest
+    runs-on: macos-latest
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+
     steps:
       - name: Download all NuGet artifacts
         uses: actions/download-artifact@v4
@@ -105,9 +113,10 @@ jobs:
           dotnet-version: ${{ env.DOTNET_VERSION }}
 
       - name: Push to NuGet.org
-        shell: bash
         run: |
           dotnet nuget push ./nupkgs/*.nupkg \
             --api-key ${{ secrets.NUGET_API_KEY }} \
             --source https://api.nuget.org/v3/index.json \
             --skip-duplicate
+        env:
+          NUGET_API_KEY: ${{ secrets.NUGET_API_KEY }}
