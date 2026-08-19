@@ -11,13 +11,13 @@
 config/cef-lines.json                 精确 pins、API hashes、包版本、TFM、GN flags
 scripts/build-cef-codecs.sh           原生 CEF 构建
 scripts/package-cef-runtime.py        单 RID runtime NuGet
-scripts/package-managed-codecs.sh     CefGlue + WebView 打包
+scripts/package-managed-codecs.sh     CefGlue + WebView 打包（支持 --rids）
 scripts/verify-package-layout.py      runtime/CefGlue/WebView/consumer 门禁
-scripts/verify-nuget-consumer.sh      真正从 nupkg 消费的六 RID smoke test
+scripts/verify-nuget-consumer.sh      真正从 nupkg 消费的 RID smoke test（支持 --rids）
 scripts/smoke-test-codec-packages.sh  synthetic-only 托管构建 smoke test
 vendor/CefGlue                        CEF 106 精确 CefGlue vendor
 vendor/CefGlue-134                    CEF 134 精确 CefGlue vendor
-.github/workflows/build-cef-codecs.yml 六 RID、双版本、release gate
+.github/workflows/build-cef-codecs.yml Windows x64 双版本、可扩展跨平台 release gate
 ```
 
 ## 升级流程
@@ -73,15 +73,20 @@ enable_hevc_parser_and_hw_decoder=true
 
 GN flag 被删除、重命名或变为 no-op 时必须停止发布并调查，不可仅凭构建成功继续。
 
-### 5. 六 RID 映射
+### 5. RID 映射与本轮交付范围
 
-每条 CEF line 都要生成：
+代码和脚本仍支持六个 RID：
 
 ```text
 win-x64 / win-arm64
 osx-x64 / osx-arm64
 linux-x64 / linux-arm64
 ```
+
+本轮真实 native CI 暂时只构建 `win-x64`：CEF 106 对应 Windows 7 兼容线，CEF 134
+对应 Windows 10/现代 Windows。`scripts/package-managed-codecs.sh` 和
+`scripts/verify-nuget-consumer.sh` 通过 `--rids` 选择本轮产物；不传时保持全量默认，
+便于未来恢复跨平台构建。
 
 修改 package ID 时同步更新：
 
@@ -179,8 +184,9 @@ build_cef: true | false
 publish_release: true | false
 ```
 
-`publish_release=true` 必须同时 `build_cef=true`。Release job 会重新验证六个 runtime
-marker，且 verifier 默认拒绝 synthetic。
+`publish_release=true` 必须同时 `build_cef=true`。本轮 Release job 只重新验证
+`win-x64` runtime；恢复跨平台 native 矩阵后再把 release 门禁扩展回六个 runtime。
+verifier 默认拒绝 synthetic。
 
 Chromium build 往往超过 hosted runner 的磁盘或 6 小时上限。若失败：
 
@@ -226,7 +232,7 @@ feed，除非目标 package 确实只存在于该 feed，并且 CI 有明确可�
 - [ ] H.264/H.265 专利/商业许可已由分发方审查；
 - [ ] Chromium/CEF/FFmpeg notices 已保留；
 - [ ] 精确 source pins 已记录；
-- [ ] 六 RID 真实 runtime 已构建；
+- [ ] 当前交付矩阵的真实 runtime 已构建（本轮为 `win-x64`）；
 - [ ] synthetic guard 通过；
 - [ ] CefGlue/WebView/consumer verifier 通过；
 - [ ] Win7 实机结果已记录；

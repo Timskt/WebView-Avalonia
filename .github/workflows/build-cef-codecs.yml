@@ -11,7 +11,16 @@ on:
       - .github/workflows/build-cef-codecs.yml
       - config/cef-lines.json
       - scripts/build-cef-codecs.sh
+      - scripts/package-cef-runtime.py
+      - scripts/package-managed-codecs.sh
+      - scripts/verify-nuget-consumer.sh
+      - scripts/verify-package-layout.py
       - scripts/cef_line_config.py
+      - vendor/CefGlue/CefGlue.Common/CefGlue.Common.csproj
+      - vendor/CefGlue-134/CefGlue.Packages.props
+      - WebView/WebViewControl.Avalonia/WebViewControl.Avalonia.csproj
+      - WebView/SampleWebView.Avalonia/MainWindow.xaml
+      - WebView/SampleWebView.Avalonia/MainWindowViewModel.cs
   workflow_dispatch:
     inputs:
       cef_line:
@@ -65,15 +74,15 @@ jobs:
 
           selection = os.environ["SELECTED_LINE"]
           lines = ["106", "134"] if selection == "both" else [selection]
-          targets = [
+          # Native CEF builds are intentionally limited for this delivery:
+          # CEF 106/win-x64 is the Windows 7 compatibility line and
+          # CEF 134/win-x64 is the Windows 10/modern Windows line. The
+          # cross-platform packaging/code paths remain in the repository and
+          # can be re-enabled by expanding this list in a future build.
+          native_targets = [
               {"rid": "win-x64", "os": "windows-2022", "arch": "x64"},
-              {"rid": "win-arm64", "os": "windows-11-arm", "arch": "arm64"},
-              {"rid": "osx-x64", "os": "macos-15-intel", "arch": "x64"},
-              {"rid": "osx-arm64", "os": "macos-15", "arch": "arm64"},
-              {"rid": "linux-x64", "os": "ubuntu-24.04", "arch": "x64"},
-              {"rid": "linux-arm64", "os": "ubuntu-24.04-arm", "arch": "arm64"},
           ]
-          native = {"include": [{"line": line, **target} for line in lines for target in targets]}
+          native = {"include": [{"line": line, **target} for line in lines for target in native_targets]}
           managed = {"include": [{"line": line} for line in lines]}
           with open(os.environ["GITHUB_OUTPUT"], "a", encoding="utf-8") as output:
               output.write(f"native_matrix={json.dumps(native, separators=(',', ':'))}\n")
@@ -216,7 +225,7 @@ jobs:
   package-managed:
     if: (github.event_name == 'push' || inputs.build_cef) && needs['build-cef'].result == 'success'
     needs: [prepare, build-cef]
-    name: Managed packages / CEF ${{ matrix.line }}
+    name: Managed Windows x64 packages / CEF ${{ matrix.line }}
     runs-on: macos-15
     timeout-minutes: 120
     strategy:
@@ -239,10 +248,10 @@ jobs:
         shell: bash
         run: python3 scripts/cef_line_config.py '${{ matrix.line }}' --format github-env >> "$GITHUB_ENV"
 
-      - name: Download six verified runtime packages
+      - name: Download verified Windows x64 runtime package
         uses: actions/download-artifact@v4
         with:
-          pattern: cef-${{ matrix.line }}-runtime-*
+          pattern: cef-${{ matrix.line }}-runtime-win-x64
           merge-multiple: true
           path: artifacts/feed
 
@@ -269,41 +278,31 @@ jobs:
         shell: bash
         run: |
           set -euxo pipefail
-          declare -A ids=(
-            [win-x64]='chromiumembeddedframework.runtime.win-x64'
-            [win-arm64]='chromiumembeddedframework.runtime.win-arm64'
-            [osx-x64]='cef.redist.osx64'
-            [osx-arm64]='cef.redist.osx.arm64'
-            [linux-x64]='cef.redist.linux64'
-            [linux-arm64]='cef.redist.linuxarm64'
-          )
-          for rid in "${!ids[@]}"; do
-            package="artifacts/feed/${ids[$rid]}.$CEF_RUNTIME_VERSION.nupkg"
-            python3 scripts/verify-package-layout.py "$package" \
-              --kind runtime --line "$CEF_LINE" --rid "$rid"
-          done
+          package="artifacts/feed/chromiumembeddedframework.runtime.win-x64.$CEF_RUNTIME_VERSION.nupkg"
+          python3 scripts/verify-package-layout.py "$package" \
+            --kind runtime --line "$CEF_LINE" --rid win-x64
 
       - name: Build, pack, and verify CefGlue and WebView
         shell: bash
-        run: ./scripts/package-managed-codecs.sh --line "$CEF_LINE" --feed artifacts/feed --config artifacts/NuGet.Codecs.Config
+        run: ./scripts/package-managed-codecs.sh --line "$CEF_LINE" --feed artifacts/feed --config artifacts/NuGet.Codecs.Config --rids win-x64
 
-      - name: Verify NuGet consumer output for all six RIDs
+      - name: Verify NuGet consumer output for Windows x64
         shell: bash
-        run: ./scripts/verify-nuget-consumer.sh --line "$CEF_LINE" --config artifacts/NuGet.Codecs.Config --work artifacts/consumer
+        run: ./scripts/verify-nuget-consumer.sh --line "$CEF_LINE" --config artifacts/NuGet.Codecs.Config --work artifacts/consumer --rids win-x64
 
-      - name: Build html5test demo smoke target
+      - name: Build html5test demo Windows x64 smoke target
         shell: bash
         run: |
           set -euxo pipefail
           dotnet restore WebView/SampleWebView.Avalonia/SampleWebView.Avalonia.csproj \
             --force --configfile artifacts/NuGet.Codecs.Config \
-            -p:CefLine="$CEF_LINE" -p:Platform=ARM64 -p:PlatformTarget=ARM64 -r osx-arm64
+            -p:CefLine="$CEF_LINE" -p:Platform=x64 -p:PlatformTarget=x64 -r win-x64
           dotnet build WebView/SampleWebView.Avalonia/SampleWebView.Avalonia.csproj \
             -c ReleaseAvalonia --no-restore \
-            -p:CefLine="$CEF_LINE" -p:Platform=ARM64 -p:PlatformTarget=ARM64 -r osx-arm64
+            -p:CefLine="$CEF_LINE" -p:Platform=x64 -p:PlatformTarget=x64 -r win-x64
           python3 scripts/verify-package-layout.py \
-            WebView/SampleWebView.Avalonia/bin/ARM64/ReleaseAvalonia/$TARGET_FRAMEWORK/osx-arm64 \
-            --kind consumer --line "$CEF_LINE" --rid osx-arm64
+            WebView/SampleWebView.Avalonia/bin/x64/ReleaseAvalonia/$TARGET_FRAMEWORK/win-x64 \
+            --kind consumer --line "$CEF_LINE" --rid win-x64
 
       - name: Upload all verified NuGet packages
         uses: actions/upload-artifact@v4
@@ -336,21 +335,13 @@ jobs:
           set -euxo pipefail
           selection='${{ inputs.cef_line }}'
           if [[ "$selection" == 'both' ]]; then lines=(106 134); else lines=("$selection"); fi
-          declare -A ids=(
-            [win-x64]='chromiumembeddedframework.runtime.win-x64'
-            [win-arm64]='chromiumembeddedframework.runtime.win-arm64'
-            [osx-x64]='cef.redist.osx64'
-            [osx-arm64]='cef.redist.osx.arm64'
-            [linux-x64]='cef.redist.linux64'
-            [linux-arm64]='cef.redist.linuxarm64'
-          )
           for line in "${lines[@]}"; do
             eval "$(python3 scripts/cef_line_config.py "$line" --format shell)"
-            for rid in "${!ids[@]}"; do
-              python3 scripts/verify-package-layout.py                 "artifacts/release/${ids[$rid]}.$CEF_RUNTIME_VERSION.nupkg"                 --kind runtime --line "$line" --rid "$rid"
-            done
+            python3 scripts/verify-package-layout.py \
+              "artifacts/release/chromiumembeddedframework.runtime.win-x64.$CEF_RUNTIME_VERSION.nupkg" \
+              --kind runtime --line "$line" --rid win-x64
             test -f "artifacts/release/WebViewControl-Avalonia.$WEBVIEW_VERSION.nupkg"
-            test -f "artifacts/release/WebViewControl-Avalonia-ARM64.$WEBVIEW_VERSION.nupkg"
+            ! test -f "artifacts/release/WebViewControl-Avalonia-ARM64.$WEBVIEW_VERSION.nupkg"
           done
           if [[ "$selection" == '106' ]]; then
             ! test -f artifacts/release/WebViewControl-Avalonia.3.134.178-codecs.1.nupkg
