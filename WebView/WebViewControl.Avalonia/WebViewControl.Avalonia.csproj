@@ -1,4 +1,4 @@
-﻿<Project Sdk="Microsoft.NET.Sdk">
+<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
     <TargetFramework>$(TargetDotnetVersion)</TargetFramework>
@@ -21,6 +21,13 @@
 
   <PropertyGroup Condition="'$(Configuration)' == 'ReleaseAvalonia'">
     <Optimize>true</Optimize>
+  </PropertyGroup>
+
+  <PropertyGroup Condition="'$(CefLine)' == '106'">
+    <DefineConstants>$(DefineConstants);CEF_106</DefineConstants>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(CefLine)' == '134'">
+    <DefineConstants>$(DefineConstants);CEF_134</DefineConstants>
   </PropertyGroup>
 
   <ItemGroup>
@@ -77,4 +84,5 @@
     <!-- IME fix dylib for macOS (fixes Chinese input method crash when CEF is active) -->
     <None Include="native\osx-arm64\libFixIME.dylib" Pack="true" PackagePath="native\osx-arm64\" Condition="'$(Platform)' == 'ARM64'" />
   </ItemGroup>
+  <Import Project="buildTransitive\WebViewControl-Avalonia.targets" />
 </Project>

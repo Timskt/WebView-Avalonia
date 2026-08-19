@@ -1,0 +1,42 @@
+# Repository/Project Specific
+/src.g/
+
+# Repository/Project Shared
+/bin/
+/obj/
+/out/
+/external/
+/packages/
+
+# Build Results
+[Bb]in/
+[Oo]bj/
+
+# Python
+*.pyc
+
+# IDE: Visual Studio
+.vs/
+*.suo
+*.user
+*.userosscache
+*.sln.docstates
+launchSettings.json
+
+# IDE: Visual Studio Code
+!.vscode/
+
+# IDE: IDEA family
+.idea
+
+# IDE: Xamarin Studio (MonoDevelop)
+*.userprefs
+CefGlue.BrowserProcess/Properties/PublishProfiles/
+
+#Nuget
+NuGet/output/
+packages/
+CefGlue.Interop.Gen/Classes.Handlers.tmpl/
+CefGlue.Interop.Gen/Classes.Proxies.tmpl/
+**/.DS_Store
+*.nupkg

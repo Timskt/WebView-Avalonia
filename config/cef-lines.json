@@ -1,0 +1,51 @@
+{
+  "106": {
+    "purpose": "Windows 7 compatibility line",
+    "cef_branch": "5249",
+    "cef_checkout": "e1054005e45a4b2e18e80edd6813dcc4c018d9c9",
+    "chromium_checkout": "106.0.5249.91",
+    "cef_runtime_version": "106.0.26-codecs.1",
+    "cefglue_version": "106.5249.19-9n1m.1",
+    "webview_version": "3.120.11-cef106-codecs.1",
+    "cefglue_source": "OutSystems/CefGlue@393f0fb4f218e1a0f15e79055eb86ab4193a79a2",
+    "api_version": "experimental",
+    "api_hashes": {
+      "universal": "44197292401010f8fce5b053733edd8642d01095",
+      "windows": "95bf7fa1356070be95b7a6fee958355c6619fb63",
+      "macos": "8ec5426d7aa0418fca147380e97623a49cd8eaf4",
+      "linux": "b2cbc2e6a3048d2415566d35ba434967fd796491"
+    },
+    "gn_defines": [
+      "is_official_build=true",
+      "proprietary_codecs=true",
+      "ffmpeg_branding=Chrome",
+      "enable_platform_hevc=true",
+      "enable_hevc_parser_and_hw_decoder=true"
+    ],
+    "target_framework": "net6.0"
+  },
+  "134": {
+    "purpose": "Current/main product line",
+    "cef_branch": "6998",
+    "cef_checkout": "5dc6f2f29c7466f6e9ab9773e36de4b28e59c1f3",
+    "chromium_checkout": "134.0.6998.178",
+    "cef_runtime_version": "134.3.9-codecs.1",
+    "cefglue_version": "134.6998.178-9n1m.1",
+    "webview_version": "3.134.178-codecs.1",
+    "cefglue_source": "OutSystems/CefGlue@2e308b350e2c1955dd35a0a3a5d7383cdcf76649",
+    "api_version": "13401",
+    "api_hashes": {
+      "windows": "751255204f006b8b883a8baf552a2da792f8aa44",
+      "macos": "b54732b528bc2669481ec0cf17c7b97b033720b9",
+      "linux": "b14bee2c0fd250da67faea421f620b58e5dea9a2"
+    },
+    "gn_defines": [
+      "is_official_build=true",
+      "proprietary_codecs=true",
+      "ffmpeg_branding=Chrome",
+      "enable_platform_hevc=true",
+      "enable_hevc_parser_and_hw_decoder=true"
+    ],
+    "target_framework": "net8.0"
+  }
+}

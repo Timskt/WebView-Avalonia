@@ -1,0 +1,339 @@
+name: Build codec-enabled CEF 106 and 134
+
+on:
+  workflow_dispatch:
+    inputs:
+      cef_line:
+        description: CEF product line to build
+        required: true
+        default: both
+        type: choice
+        options:
+          - both
+          - '134'
+          - '106'
+      build_cef:
+        description: Build pinned CEF/Chromium sources (very large and slow)
+        required: true
+        default: true
+        type: boolean
+      publish_release:
+        description: Create a GitHub prerelease after all selected lines pass
+        required: true
+        default: false
+        type: boolean
+
+permissions:
+  contents: write
+
+concurrency:
+  group: cef-codecs-${{ github.ref }}-${{ inputs.cef_line }}
+  cancel-in-progress: false
+
+env:
+  DOTNET_CLI_TELEMETRY_OPTOUT: '1'
+  DOTNET_NOLOGO: '1'
+
+jobs:
+  prepare:
+    name: Prepare selected build matrices
+    runs-on: ubuntu-24.04
+    outputs:
+      native_matrix: ${{ steps.matrix.outputs.native_matrix }}
+      managed_matrix: ${{ steps.matrix.outputs.managed_matrix }}
+    steps:
+      - id: matrix
+        name: Generate selected line/RID matrices
+        shell: bash
+        env:
+          SELECTED_LINE: ${{ inputs.cef_line }}
+        run: |
+          python3 - <<'PY'
+          import json
+          import os
+
+          selection = os.environ["SELECTED_LINE"]
+          lines = ["106", "134"] if selection == "both" else [selection]
+          targets = [
+              {"rid": "win-x64", "os": "windows-2022", "arch": "x64"},
+              {"rid": "win-arm64", "os": "windows-11-arm", "arch": "arm64"},
+              {"rid": "osx-x64", "os": "macos-15-intel", "arch": "x64"},
+              {"rid": "osx-arm64", "os": "macos-15", "arch": "arm64"},
+              {"rid": "linux-x64", "os": "ubuntu-24.04", "arch": "x64"},
+              {"rid": "linux-arm64", "os": "ubuntu-24.04-arm", "arch": "arm64"},
+          ]
+          native = {"include": [{"line": line, **target} for line in lines for target in targets]}
+          managed = {"include": [{"line": line} for line in lines]}
+          with open(os.environ["GITHUB_OUTPUT"], "a", encoding="utf-8") as output:
+              output.write(f"native_matrix={json.dumps(native, separators=(',', ':'))}\n")
+              output.write(f"managed_matrix={json.dumps(managed, separators=(',', ':'))}\n")
+          PY
+
+  validate:
+    name: Validate workflow inputs and repository tooling
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Validate input invariants
+        shell: bash
+        run: |
+          set -euxo pipefail
+          if [[ '${{ inputs.publish_release }}' == 'true' && '${{ inputs.build_cef }}' != 'true' ]]; then
+            echo 'publish_release=true requires build_cef=true. Synthetic or stock runtimes must never be released.' >&2
+            exit 1
+          fi
+
+      - name: Validate scripts and exact line configuration
+        shell: bash
+        run: |
+          set -euxo pipefail
+          bash -n scripts/*.sh
+          python3 -m py_compile scripts/*.py
+          python3 scripts/cef_line_config.py 106 --format json
+          python3 scripts/cef_line_config.py 134 --format json
+          git diff --check
+
+  build-cef:
+    if: inputs.build_cef
+    needs: [prepare, validate]
+    name: CEF ${{ matrix.line }} / ${{ matrix.rid }}
+    timeout-minutes: 360
+    strategy:
+      fail-fast: false
+      matrix: ${{ fromJSON(needs.prepare.outputs.native_matrix) }}
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Load exact CEF line configuration
+        shell: bash
+        run: python3 scripts/cef_line_config.py '${{ matrix.line }}' --format github-env >> "$GITHUB_ENV"
+
+      - name: Free Linux runner disk space
+        if: runner.os == 'Linux'
+        shell: bash
+        run: |
+          set -euxo pipefail
+          sudo systemctl stop docker.service containerd.service 2>/dev/null || true
+          sudo rm -rf /usr/local/lib/android /usr/share/dotnet /opt/ghc /usr/local/.ghcup /opt/hostedtoolcache/CodeQL || true
+          df -h
+
+      - name: Install Linux dependencies
+        if: runner.os == 'Linux'
+        shell: bash
+        run: |
+          set -euxo pipefail
+          sudo apt-get update
+          sudo apt-get install -y pkg-config libcups2-dev
+
+      - name: Bootstrap depot_tools
+        shell: bash
+        run: |
+          set -euxo pipefail
+          root="$RUNNER_TEMP/cef-$CEF_LINE-${{ matrix.rid }}"
+          mkdir -p "$root"
+          git clone --depth 1 https://chromium.googlesource.com/chromium/tools/depot_tools.git "$root/depot_tools"
+
+      - name: Build exact pinned CEF with codec paths
+        shell: bash
+        env:
+          DEPOT_TOOLS_DIR: ${{ runner.temp }}/cef-${{ matrix.line }}-${{ matrix.rid }}/depot_tools
+          CEF_SOURCE_DIR: ${{ runner.temp }}/cef-${{ matrix.line }}-${{ matrix.rid }}/source
+          CEF_ARCH: ${{ matrix.arch }}
+          CEF_PLATFORM: ${{ runner.os }}
+        run: ./scripts/build-cef-codecs.sh
+
+      - name: Package and verify codec runtime NuGet
+        shell: bash
+        run: |
+          set -euxo pipefail
+          root="$RUNNER_TEMP/cef-$CEF_LINE-${{ matrix.rid }}"
+          python3 scripts/package-cef-runtime.py \
+            --line "$CEF_LINE" \
+            --rid '${{ matrix.rid }}' \
+            --source "$root/source/chromium/src/cef/binary_distrib" \
+            --version "$CEF_RUNTIME_VERSION" \
+            --output "$root/runtime-packages" \
+            --codec-enabled
+          package="$(find "$root/runtime-packages" -maxdepth 1 -name '*.nupkg' -print -quit)"
+          test -n "$package"
+          python3 scripts/verify-package-layout.py "$package" \
+            --kind runtime --line "$CEF_LINE" --rid '${{ matrix.rid }}'
+
+      - name: Upload verified runtime NuGet
+        uses: actions/upload-artifact@v4
+        with:
+          name: cef-${{ matrix.line }}-runtime-${{ matrix.rid }}
+          path: ${{ runner.temp }}/cef-${{ matrix.line }}-${{ matrix.rid }}/runtime-packages/*.nupkg
+          if-no-files-found: error
+          compression-level: 0
+          retention-days: 14
+
+  package-managed:
+    if: inputs.build_cef && needs['build-cef'].result == 'success'
+    needs: [prepare, build-cef]
+    name: Managed packages / CEF ${{ matrix.line }}
+    runs-on: macos-15
+    timeout-minutes: 120
+    strategy:
+      fail-fast: false
+      matrix: ${{ fromJSON(needs.prepare.outputs.managed_matrix) }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: |
+            6.0.x
+            8.0.x
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Load exact CEF line configuration
+        shell: bash
+        run: python3 scripts/cef_line_config.py '${{ matrix.line }}' --format github-env >> "$GITHUB_ENV"
+
+      - name: Download six verified runtime packages
+        uses: actions/download-artifact@v4
+        with:
+          pattern: cef-${{ matrix.line }}-runtime-*
+          merge-multiple: true
+          path: artifacts/feed
+
+      - name: Write isolated NuGet configuration
+        shell: bash
+        run: |
+          set -euxo pipefail
+          feed="$(pwd)/artifacts/feed"
+          cat > artifacts/NuGet.Codecs.Config <<EOF
+          <?xml version="1.0" encoding="utf-8"?>
+          <configuration>
+            <config>
+              <add key="globalPackagesFolder" value="$(pwd)/artifacts/nuget-cache" />
+            </config>
+            <packageSources>
+              <clear />
+              <add key="codec-feed" value="$feed" />
+              <add key="nuget.org" value="https://api.nuget.org/v3/index.json" />
+            </packageSources>
+          </configuration>
+          EOF
+
+      - name: Verify downloaded runtime packages
+        shell: bash
+        run: |
+          set -euxo pipefail
+          declare -A ids=(
+            [win-x64]='chromiumembeddedframework.runtime.win-x64'
+            [win-arm64]='chromiumembeddedframework.runtime.win-arm64'
+            [osx-x64]='cef.redist.osx64'
+            [osx-arm64]='cef.redist.osx.arm64'
+            [linux-x64]='cef.redist.linux64'
+            [linux-arm64]='cef.redist.linuxarm64'
+          )
+          for rid in "${!ids[@]}"; do
+            package="artifacts/feed/${ids[$rid]}.$CEF_RUNTIME_VERSION.nupkg"
+            python3 scripts/verify-package-layout.py "$package" \
+              --kind runtime --line "$CEF_LINE" --rid "$rid"
+          done
+
+      - name: Build, pack, and verify CefGlue and WebView
+        shell: bash
+        run: ./scripts/package-managed-codecs.sh --line "$CEF_LINE" --feed artifacts/feed --config artifacts/NuGet.Codecs.Config
+
+      - name: Verify NuGet consumer output for all six RIDs
+        shell: bash
+        run: ./scripts/verify-nuget-consumer.sh --line "$CEF_LINE" --config artifacts/NuGet.Codecs.Config --work artifacts/consumer
+
+      - name: Build html5test demo smoke target
+        shell: bash
+        run: |
+          set -euxo pipefail
+          dotnet restore WebView/SampleWebView.Avalonia/SampleWebView.Avalonia.csproj \
+            --force --configfile artifacts/NuGet.Codecs.Config \
+            -p:CefLine="$CEF_LINE" -p:Platform=ARM64 -p:PlatformTarget=ARM64 -r osx-arm64
+          dotnet build WebView/SampleWebView.Avalonia/SampleWebView.Avalonia.csproj \
+            -c ReleaseAvalonia --no-restore \
+            -p:CefLine="$CEF_LINE" -p:Platform=ARM64 -p:PlatformTarget=ARM64 -r osx-arm64
+          python3 scripts/verify-package-layout.py \
+            WebView/SampleWebView.Avalonia/bin/ARM64/ReleaseAvalonia/$TARGET_FRAMEWORK/osx-arm64 \
+            --kind consumer --line "$CEF_LINE" --rid osx-arm64
+
+      - name: Upload all verified NuGet packages
+        uses: actions/upload-artifact@v4
+        with:
+          name: cef-${{ matrix.line }}-codecs-nuget-packages
+          path: artifacts/feed/*.nupkg
+          if-no-files-found: error
+          compression-level: 0
+          retention-days: 30
+
+  release:
+    if: inputs.build_cef && inputs.publish_release
+    needs: package-managed
+    name: Create verified codec prerelease
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Download selected verified package sets
+        uses: actions/download-artifact@v4
+        with:
+          pattern: cef-*-codecs-nuget-packages
+          merge-multiple: true
+          path: artifacts/release
+
+      - name: Reject synthetic artifacts and incomplete selections
+        shell: bash
+        run: |
+          set -euxo pipefail
+          selection='${{ inputs.cef_line }}'
+          if [[ "$selection" == 'both' ]]; then lines=(106 134); else lines=("$selection"); fi
+          declare -A ids=(
+            [win-x64]='chromiumembeddedframework.runtime.win-x64'
+            [win-arm64]='chromiumembeddedframework.runtime.win-arm64'
+            [osx-x64]='cef.redist.osx64'
+            [osx-arm64]='cef.redist.osx.arm64'
+            [linux-x64]='cef.redist.linux64'
+            [linux-arm64]='cef.redist.linuxarm64'
+          )
+          for line in "${lines[@]}"; do
+            eval "$(python3 scripts/cef_line_config.py "$line" --format shell)"
+            for rid in "${!ids[@]}"; do
+              python3 scripts/verify-package-layout.py                 "artifacts/release/${ids[$rid]}.$CEF_RUNTIME_VERSION.nupkg"                 --kind runtime --line "$line" --rid "$rid"
+            done
+            test -f "artifacts/release/WebViewControl-Avalonia.$WEBVIEW_VERSION.nupkg"
+            test -f "artifacts/release/WebViewControl-Avalonia-ARM64.$WEBVIEW_VERSION.nupkg"
+          done
+          if [[ "$selection" == '106' ]]; then
+            ! test -f artifacts/release/WebViewControl-Avalonia.3.134.178-codecs.1.nupkg
+          elif [[ "$selection" == '134' ]]; then
+            ! test -f artifacts/release/WebViewControl-Avalonia.3.120.11-cef106-codecs.1.nupkg
+          fi
+
+      - name: Create GitHub prerelease
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euxo pipefail
+          tag="cef-codecs-${{ inputs.cef_line }}-${GITHUB_RUN_NUMBER}.${GITHUB_RUN_ATTEMPT}"
+          gh release create "$tag" artifacts/release/*.nupkg \
+            --repo "$GITHUB_REPOSITORY" \
+            --target "$GITHUB_SHA" \
+            --prerelease \
+            --title "CEF ${{ inputs.cef_line }} codec packages build $GITHUB_RUN_NUMBER" \
+            --notes-file docs/RELEASE-NOTES-CODECS-AND-SUBPROCESS.md

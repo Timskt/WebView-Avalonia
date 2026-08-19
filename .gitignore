@@ -1,0 +1,16 @@
+.dotnet-home/
+local-nuget/
+artifacts/
+
+WebView/nuget/
+WebView/packages/
+
+vendor/CefGlue*/**/bin/
+vendor/CefGlue*/**/obj/
+vendor/CefGlue*/packages/
+vendor/CefGlue*/Nuget/output/
+vendor/CefGlue*/NuGet/output/
+
+*.nupkg
+scripts/**/__pycache__/
+**/.DS_Store

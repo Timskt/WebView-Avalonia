@@ -59,7 +59,11 @@ namespace WebViewControl {
                 }
             }
 
+#if CEF_134
+            protected override void OnRenderProcessTerminated(CefBrowser browser, CefTerminationStatus status, int errorCode, string error) {
+#else
             protected override void OnRenderProcessTerminated(CefBrowser browser, CefTerminationStatus status) {
+#endif
                 OwnerWebView.HandleRenderProcessCrashed();
 
                 const string ExceptionPrefix = "WebView render process ";
@@ -70,10 +74,18 @@ namespace WebViewControl {
                     case CefTerminationStatus.ProcessCrashed:
                         exception = new RenderProcessCrashedException(ExceptionPrefix + "crashed");
                         break;
+#if CEF_134
+                    case CefTerminationStatus.ProcessWasKilled:
+#else
                     case CefTerminationStatus.WasKilled:
+#endif
                         exception = new RenderProcessKilledException(ExceptionPrefix + "was killed", OwnerWebView.IsDisposing);
                         break;
+#if CEF_134
+                    case CefTerminationStatus.ProcessOom:
+#else
                     case CefTerminationStatus.OutOfMemory:
+#endif
                         exception = new RenderProcessOutOfMemoryException(ExceptionPrefix + "ran out of memory");
                         break;
                     default:

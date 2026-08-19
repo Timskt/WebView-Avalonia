@@ -105,46 +105,64 @@ return true;
     with CopyToOutputDirectory=PreserveNewest. These files don't exist yet at that point,
     causing MSB3030. Strip the copy metadata and handle the copy ourselves.
   -->
-  <ItemGroup Condition="$([MSBuild]::IsOSPlatform('OSX')) And ('$(CefGlueTargetPlatform)' == 'osx-arm64' Or '$(CefGlueTargetPlatform)' == 'osx-x64' Or '$(RuntimeIdentifier)' == 'osx-arm64' Or '$(RuntimeIdentifier)' == 'osx-x64')">
-    <None Update="$(OutDir)libEGL.dylib" CopyToOutputDirectory="" CopyToPublishDirectory="" />
-    <None Update="$(OutDir)libGLESv2.dylib" CopyToOutputDirectory="" CopyToPublishDirectory="" />
-    <None Update="$(OutDir)libvk_swiftshader.dylib" CopyToOutputDirectory="" CopyToPublishDirectory="" />
-  </ItemGroup>
+  <Target Name="_RemoveMacCefSelfCopyItems"
+          BeforeTargets="AssignTargetPaths"
+          Condition="$([MSBuild]::IsOSPlatform('OSX')) And ('$(RuntimeIdentifier)' == 'osx-x64' Or '$(RuntimeIdentifier)' == 'osx-arm64' Or ('$(RuntimeIdentifier)' == '' And ('$(CefGlueTargetPlatform)' == 'osx-x64' Or '$(CefGlueTargetPlatform)' == 'osx-arm64')))">
+    <ItemGroup>
+      <None Remove="$(OutDir)\libEGL.dylib" />
+      <None Remove="$(OutDir)\libGLESv2.dylib" />
+      <None Remove="$(OutDir)\libvk_swiftshader.dylib" />
+    </ItemGroup>
+  </Target>
 
   <!--
-    CEF files must be deployed to the output directory.
-    CefGlue.Common targets add None items with CopyToOutputDirectory from CefRedistOSXARM64,
-    but MSBuild may skip them during incremental builds. This target ensures they're always copied.
+    macOS CEF files must be deployed to the output directory. CefGlue.Common
+    normally handles this, but this explicit copy keeps the existing IME/ObjC
+    patch flow reliable during incremental builds.
   -->
-  <Target Name="_DeployCefFiles"
+  <Target Name="_DeployMacCefFiles"
           BeforeTargets="CopyFilesToOutputDirectory"
-          Condition="$([MSBuild]::IsOSPlatform('OSX')) And ('@(CefRedistOSXARM64)' != '' Or '@(CefRedistOSX64)' != '')">
-    <!-- Copy all CEF redist files to output directory, preserving subdirectory structure -->
-    <Copy SourceFiles="@(CefRedistOSXARM64)" DestinationFiles="@(CefRedistOSXARM64->'$(OutDir)%(RecursiveDir)%(Filename)%(Extension)')" SkipUnchangedFiles="true" Condition="'@(CefRedistOSXARM64)' != ''" />
-    <Copy SourceFiles="@(CefRedistOSX64)" DestinationFiles="@(CefRedistOSX64->'$(OutDir)%(RecursiveDir)%(Filename)%(Extension)')" SkipUnchangedFiles="true" Condition="'@(CefRedistOSX64)' != ''" />
-    <!-- Copy browser process files to CefGlueBrowserProcess subfolder -->
+          Condition="$([MSBuild]::IsOSPlatform('OSX')) And ('$(RuntimeIdentifier)' == 'osx-x64' Or '$(RuntimeIdentifier)' == 'osx-arm64' Or ('$(RuntimeIdentifier)' == '' And ('$(CefGlueTargetPlatform)' == 'osx-x64' Or '$(CefGlueTargetPlatform)' == 'osx-arm64')))">
+    <Copy SourceFiles="@(CefRedistOSXARM64)" DestinationFiles="@(CefRedistOSXARM64->'$(OutDir)%(RecursiveDir)%(Filename)%(Extension)')" SkipUnchangedFiles="true" Condition="'$(RuntimeIdentifier)' == 'osx-arm64' Or ('$(RuntimeIdentifier)' == '' And '$(CefGlueTargetPlatform)' == 'osx-arm64')" />
+    <Copy SourceFiles="@(CefRedistOSX64)" DestinationFiles="@(CefRedistOSX64->'$(OutDir)%(RecursiveDir)%(Filename)%(Extension)')" SkipUnchangedFiles="true" Condition="'$(RuntimeIdentifier)' == 'osx-x64' Or ('$(RuntimeIdentifier)' == '' And '$(CefGlueTargetPlatform)' == 'osx-x64')" />
     <PropertyGroup>
       <_CefBrowserProcessDir>$(OutDir)CefGlueBrowserProcess/</_CefBrowserProcessDir>
     </PropertyGroup>
     <MakeDir Directories="$(_CefBrowserProcessDir)" />
-    <!-- Copy CefGlueBrowserProcessFiles (Xilium.CefGlue.BrowserProcess + runtime deps) -->
-    <!-- Direct path since CefGlue.Common props may not be transitively imported -->
-    <ItemGroup Condition="'@(CefGlueBrowserProcessFiles)' == ''">
-      <_CefBrowserProcessSourceFiles Include="$(NuGetPackageRoot)cefglue.common.arm64/*/bin/osx-arm64/*" Condition="'$(RuntimeIdentifier)' == 'osx-arm64'" />
-      <_CefBrowserProcessSourceFiles Include="$(NuGetPackageRoot)cefglue.common.arm64/*/bin/osx-x64/*" Condition="'$(RuntimeIdentifier)' == 'osx-x64'" />
-      <_CefBrowserProcessSourceFiles Include="$(NuGetPackageRoot)cefglue.common/*/bin/osx-arm64/*" Condition="'$(RuntimeIdentifier)' == 'osx-arm64'" />
-      <_CefBrowserProcessSourceFiles Include="$(NuGetPackageRoot)cefglue.common/*/bin/osx-x64/*" Condition="'$(RuntimeIdentifier)' == 'osx-x64'" />
-    </ItemGroup>
-    <Copy SourceFiles="@(CefGlueBrowserProcessFiles);@(_CefBrowserProcessSourceFiles)" DestinationFolder="$(_CefBrowserProcessDir)" SkipUnchangedFiles="true" />
     <Copy SourceFiles="$(OutDir)libEGL.dylib" DestinationFolder="$(_CefBrowserProcessDir)" SkipUnchangedFiles="true" Condition="Exists('$(OutDir)libEGL.dylib')" />
     <Copy SourceFiles="$(OutDir)libGLESv2.dylib" DestinationFolder="$(_CefBrowserProcessDir)" SkipUnchangedFiles="true" Condition="Exists('$(OutDir)libGLESv2.dylib')" />
     <Copy SourceFiles="$(OutDir)libvk_swiftshader.dylib" DestinationFolder="$(_CefBrowserProcessDir)" SkipUnchangedFiles="true" Condition="Exists('$(OutDir)libvk_swiftshader.dylib')" />
   </Target>
 
+  <!-- Deploy the renamed subprocess on Windows, macOS, and Linux. The direct
+       package lookup is a fallback for NuGet clients that do not import the
+       transitive CefGlue.Common props early enough. -->
+  <Target Name="_Deploy9n1mBrowserProcess"
+          BeforeTargets="CopyFilesToOutputDirectory"
+          Condition="'$(CefGlueTargetPlatform)' != '' Or '$(RuntimeIdentifier)' != ''">
+    <PropertyGroup>
+      <_CefBrowserProcessRid Condition="'$(RuntimeIdentifier)' != ''">$(RuntimeIdentifier)</_CefBrowserProcessRid>
+      <_CefBrowserProcessRid Condition="'$(_CefBrowserProcessRid)' == ''">$(CefGlueTargetPlatform)</_CefBrowserProcessRid>
+      <_CefBrowserProcessDir>$(OutDir)CefGlueBrowserProcess/</_CefBrowserProcessDir>
+    </PropertyGroup>
+    <ItemGroup Condition="'@(CefGlueBrowserProcessFiles)' == '' And '$(_CefBrowserProcessRid)' != ''">
+      <_CefBrowserProcessSourceFiles Include="$(NuGetPackageRoot)cefglue.common.arm64/*/bin/$(_CefBrowserProcessRid)/*" Condition="$([System.String]::Copy('$(_CefBrowserProcessRid)').EndsWith('arm64'))" />
+      <_CefBrowserProcessSourceFiles Include="$(NuGetPackageRoot)cefglue.common/*/bin/$(_CefBrowserProcessRid)/*" Condition="'$([System.String]::Copy('$(_CefBrowserProcessRid)').EndsWith('arm64'))' != 'True'" />
+    </ItemGroup>
+    <MakeDir Directories="$(_CefBrowserProcessDir)" Condition="'@(CefGlueBrowserProcessFiles)' != '' Or '@(_CefBrowserProcessSourceFiles)' != ''" />
+    <Copy SourceFiles="@(CefGlueBrowserProcessFiles);@(_CefBrowserProcessSourceFiles)" DestinationFolder="$(_CefBrowserProcessDir)" SkipUnchangedFiles="true" Condition="'@(CefGlueBrowserProcessFiles)' != '' Or '@(_CefBrowserProcessSourceFiles)' != ''" />
+  </Target>
+
+  <Target Name="_Ensure9n1mBrowserProcessExecutable"
+          AfterTargets="CopyFilesToOutputDirectory"
+          Condition="!$([MSBuild]::IsOSPlatform('Windows')) And ('$(RuntimeIdentifier)' == 'osx-x64' Or '$(RuntimeIdentifier)' == 'osx-arm64' Or '$(RuntimeIdentifier)' == 'linux-x64' Or '$(RuntimeIdentifier)' == 'linux-arm64' Or ('$(RuntimeIdentifier)' == '' And ('$(CefGlueTargetPlatform)' == 'osx-x64' Or '$(CefGlueTargetPlatform)' == 'osx-arm64' Or '$(CefGlueTargetPlatform)' == 'linux-x64' Or '$(CefGlueTargetPlatform)' == 'linux-arm64'))) And Exists('$(OutDir)CefGlueBrowserProcess/9n1m.webview')">
+    <Exec Command="chmod +x &quot;$(OutDir)CefGlueBrowserProcess/9n1m.webview&quot;" />
+  </Target>
+
   <!-- Run after CEF files are copied to output directory -->
   <Target Name="PatchCefExtensionDropdownHandler"
           AfterTargets="CopyFilesToOutputDirectory"
-          Condition="$([MSBuild]::IsOSPlatform('OSX')) And ('$(CefGlueTargetPlatform)' == 'osx-arm64' Or '$(CefGlueTargetPlatform)' == 'osx-x64' Or '$(RuntimeIdentifier)' == 'osx-arm64' Or '$(RuntimeIdentifier)' == 'osx-x64')">
+          Condition="$([MSBuild]::IsOSPlatform('OSX')) And ('$(RuntimeIdentifier)' == 'osx-arm64' Or '$(RuntimeIdentifier)' == 'osx-x64' Or ('$(RuntimeIdentifier)' == '' And ('$(CefGlueTargetPlatform)' == 'osx-arm64' Or '$(CefGlueTargetPlatform)' == 'osx-x64')))">
 
     <PropertyGroup>
       <_CefDylibPath>$(OutDir)libcef.dylib</_CefDylibPath>
@@ -179,7 +197,7 @@ return true;
   -->
   <Target Name="_CopyImeFixDylib"
           BeforeTargets="CopyFilesToOutputDirectory"
-          Condition="$([MSBuild]::IsOSPlatform('OSX')) And ('$(RuntimeIdentifier)' == 'osx-arm64' Or '$(CefGlueTargetPlatform)' == 'osx-arm64' Or '$(Platform)' == 'ARM64' Or ('$(RuntimeIdentifier)' == '' And '$([System.Runtime.InteropServices.RuntimeInformation]::ProcessArchitecture)' == 'ARM64'))">
+          Condition="$([MSBuild]::IsOSPlatform('OSX')) And ('$(RuntimeIdentifier)' == 'osx-arm64' Or ('$(RuntimeIdentifier)' == '' And ('$(CefGlueTargetPlatform)' == 'osx-arm64' Or '$(Platform)' == 'ARM64' Or '$([System.Runtime.InteropServices.RuntimeInformation]::ProcessArchitecture)' == 'ARM64')))">
     <PropertyGroup>
       <_ImeFixDylibSource>$(MSBuildThisFileDirectory)..\native\osx-arm64\libFixIME.dylib</_ImeFixDylibSource>
     </PropertyGroup>

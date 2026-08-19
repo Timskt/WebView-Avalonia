@@ -1,19 +1,34 @@
 <?xml version="1.0" encoding="utf-8"?>
 <Project>
   <PropertyGroup>
-    <TargetDotnetVersion>net8.0</TargetDotnetVersion>
     <Platforms>x64;ARM64</Platforms>
     <AvaloniaVersion>11.0.10</AvaloniaVersion>
-    <!-- CEF 106.x is the last version supporting Windows 7 -->
-    <CefGlueVersion>106.5249.19-avalonia11</CefGlueVersion>
+    <!-- Default/current line is CEF 134. Set -p:CefLine=106 for Windows 7 packages. -->
+    <CefLine Condition="'$(CefLine)' == ''">134</CefLine>
   </PropertyGroup>
+
+  <PropertyGroup Condition="'$(CefLine)' == '134'">
+    <TargetDotnetVersion>net8.0</TargetDotnetVersion>
+    <CefGlueVersion>134.6998.178-9n1m.1</CefGlueVersion>
+    <Version>3.134.178-codecs.1</Version>
+    <Cef134>true</Cef134>
+  </PropertyGroup>
+
+  <PropertyGroup Condition="'$(CefLine)' == '106'">
+    <TargetDotnetVersion>net6.0</TargetDotnetVersion>
+    <!-- CEF 106.x is the last project line retained for Windows 7. -->
+    <CefGlueVersion>106.5249.19-9n1m.1</CefGlueVersion>
+    <Version>3.120.11-cef106-codecs.1</Version>
+    <Cef106>true</Cef106>
+  </PropertyGroup>
+
+  <Target Name="ValidateCefLine" BeforeTargets="PrepareForBuild" Condition="'$(CefLine)' != '106' And '$(CefLine)' != '134'">
+    <Error Text="Unsupported CefLine '$(CefLine)'. Use 106 or 134." />
+  </Target>
 
   <PropertyGroup>
     <AssemblyVersion>2.0.0.0</AssemblyVersion>
     <FileVersion>2.0.0.0</FileVersion>
-    <!-- Please see https://github.com/OutSystems/WebView?tab=readme-ov-file#versioning for versioning rules -->
-    <!-- CEF 106.x based version with macOS fixes -->
-    <Version>3.120.11-macos</Version>
     <Authors>OutSystems</Authors>
     <Product>WebViewControl</Product>
     <Copyright>Copyright © OutSystems 2023</Copyright>

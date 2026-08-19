@@ -1,0 +1,105 @@
+<Project>
+    <PropertyGroup>
+        <CefGlueBrowserProcessDir>CefGlueBrowserProcess</CefGlueBrowserProcessDir>
+    </PropertyGroup>
+
+    <!-- Resolve the final target RID at build time; NuGet props are evaluated too early for cross-RID builds. -->
+    <Target Name="ResolveCefGlueRuntimeItems" BeforeTargets="AssignTargetPaths">
+        <PropertyGroup>
+            <CefGlueTargetPlatform Condition="'$(RuntimeIdentifier)' != ''">$(RuntimeIdentifier)</CefGlueTargetPlatform>
+            <CefGlueTargetPlatform Condition="'$(RuntimeIdentifier)' == '' and $([MSBuild]::IsOSPlatform('Windows')) and '$(Platform)' == 'x64'">win-x64</CefGlueTargetPlatform>
+            <CefGlueTargetPlatform Condition="'$(RuntimeIdentifier)' == '' and $([MSBuild]::IsOSPlatform('Windows')) and '$(Platform)' == 'ARM64'">win-arm64</CefGlueTargetPlatform>
+            <CefGlueTargetPlatform Condition="'$(RuntimeIdentifier)' == '' and $([MSBuild]::IsOSPlatform('Linux')) and '$(Platform)' == 'x64'">linux-x64</CefGlueTargetPlatform>
+            <CefGlueTargetPlatform Condition="'$(RuntimeIdentifier)' == '' and $([MSBuild]::IsOSPlatform('Linux')) and '$(Platform)' == 'ARM64'">linux-arm64</CefGlueTargetPlatform>
+            <CefGlueTargetPlatform Condition="'$(RuntimeIdentifier)' == '' and $([MSBuild]::IsOSPlatform('OSX')) and '$(Platform)' == 'x64'">osx-x64</CefGlueTargetPlatform>
+            <CefGlueTargetPlatform Condition="'$(RuntimeIdentifier)' == '' and $([MSBuild]::IsOSPlatform('OSX')) and '$(Platform)' == 'ARM64'">osx-arm64</CefGlueTargetPlatform>
+            <CefGlueTargetPlatform Condition="'$(CefGlueTargetPlatform)' == '' and $([MSBuild]::IsOSPlatform('Windows'))">win-x64</CefGlueTargetPlatform>
+            <CefGlueTargetPlatform Condition="'$(CefGlueTargetPlatform)' == '' and $([MSBuild]::IsOSPlatform('Linux'))">linux-x64</CefGlueTargetPlatform>
+            <CefGlueTargetPlatform Condition="'$(CefGlueTargetPlatform)' == '' and $([MSBuild]::IsOSPlatform('OSX'))">osx-x64</CefGlueTargetPlatform>
+        </PropertyGroup>
+        <ItemGroup>
+            <CefGlueBrowserProcessFiles Remove="@(CefGlueBrowserProcessFiles)" />
+            <CefGlueBrowserProcessFiles Include="$(MSBuildThisFileDirectory)..\bin\$(CefGlueTargetPlatform)\*"
+                                        Condition="'$(CefGlueTargetPlatform)' != ''" />
+            <None Include="@(CefGlueBrowserProcessFiles)">
+                <Visible>false</Visible>
+                <Link>$(OutputDirectory)$(CefGlueBrowserProcessDir)\%(RecursiveDir)%(FileName)%(Extension)</Link>
+                <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+                <CopyToPublishDirectory>PreserveNewest</CopyToPublishDirectory>
+                <PublishState>Included</PublishState>
+            </None>
+            <None Condition="'$(CefGlueTargetPlatform)' == 'osx-x64'" Include="@(CefRedistOSX64)">
+                <Visible>false</Visible>
+                <Link>$(OutputDirectory)%(RecursiveDir)%(FileName)%(Extension)</Link>
+                <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+                <CopyToPublishDirectory>PreserveNewest</CopyToPublishDirectory>
+                <PublishState>Included</PublishState>
+            </None>
+            <None Condition="'$(CefGlueTargetPlatform)' == 'osx-arm64'" Include="@(CefRedistOSXARM64)">
+                <Visible>false</Visible>
+                <Link>$(OutputDirectory)%(RecursiveDir)%(FileName)%(Extension)</Link>
+                <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+                <CopyToPublishDirectory>PreserveNewest</CopyToPublishDirectory>
+                <PublishState>Included</PublishState>
+            </None>
+            <None Condition="'$(CefGlueTargetPlatform)' == 'linux-x64'" Include="@(CefRedistLinux64)">
+                <Visible>false</Visible>
+                <Link>$(OutputDirectory)$(CefGlueBrowserProcessDir)\%(RecursiveDir)%(FileName)%(Extension)</Link>
+                <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+                <CopyToPublishDirectory>PreserveNewest</CopyToPublishDirectory>
+                <PublishState>Included</PublishState>
+            </None>
+            <None Condition="'$(CefGlueTargetPlatform)' == 'linux-arm64'" Include="@(CefRedistLinuxARM64)">
+                <Visible>false</Visible>
+                <Link>$(OutputDirectory)$(CefGlueBrowserProcessDir)\%(RecursiveDir)%(FileName)%(Extension)</Link>
+                <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+                <CopyToPublishDirectory>PreserveNewest</CopyToPublishDirectory>
+                <PublishState>Included</PublishState>
+            </None>
+        </ItemGroup>
+    </Target>
+
+    <!-- Copy Windows CEF resources and both locale locations. -->
+    <Target Name="ResolveCEFAssets" Condition="$([MSBuild]::IsOSPlatform('Windows')) and '$(CefGlueTargetPlatform)' != ''" AfterTargets="ResolvePackageAssets">
+        <ItemGroup Condition="'$(CefGlueTargetPlatform)' == 'win-x64' OR '$(CefGlueTargetPlatform)' == 'win-arm64'">
+            <CefRuntimeFiles Include="@(RuntimeTargetsCopyLocalItems->WithMetadataValue('NuGetPackageId', 'chromiumembeddedframework.runtime.$(CefGlueTargetPlatform)'))" />
+            <None Include="@(CefRuntimeFiles)">
+                <Visible>false</Visible>
+                <Link>$(OutputDirectory)%(FileName)%(Extension)</Link>
+                <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+                <CopyToPublishDirectory>PreserveNewest</CopyToPublishDirectory>
+                <PublishState>Included</PublishState>
+            </None>
+        </ItemGroup>
+        <ItemGroup>
+            <CefRuntimeLocales Include="@(CefRuntimeWin64Locales)" Condition="'$(CefGlueTargetPlatform)' == 'win-x64'" />
+            <CefRuntimeLocales Include="@(CefRuntimeWinArm64Locales)" Condition="'$(CefGlueTargetPlatform)' == 'win-arm64'" />
+            <None Include="@(CefRuntimeLocales)">
+                <Visible>false</Visible>
+                <Link>runtimes\$(CefGlueTargetPlatform)
+ative\locales\%(RecursiveDir)%(FileName)%(Extension)</Link>
+                <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+                <CopyToPublishDirectory>Never</CopyToPublishDirectory>
+            </None>
+            <None Include="@(CefRuntimeLocales)">
+                <Visible>false</Visible>
+                <Link>$(OutputDirectory)locales\%(RecursiveDir)%(FileName)%(Extension)</Link>
+                <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+                <CopyToPublishDirectory>PreserveNewest</CopyToPublishDirectory>
+                <PublishState>Included</PublishState>
+            </None>
+        </ItemGroup>
+    </Target>
+
+    <Target Name="Ensure9n1mWebViewExecutableInOutput"
+            AfterTargets="CopyFilesToOutputDirectory"
+            Condition="!$([MSBuild]::IsOSPlatform('Windows')) And ('$(RuntimeIdentifier)' == '' Or '$(RuntimeIdentifier)' == 'osx-x64' Or '$(RuntimeIdentifier)' == 'osx-arm64' Or '$(RuntimeIdentifier)' == 'linux-x64' Or '$(RuntimeIdentifier)' == 'linux-arm64') And Exists('$(OutDir)$(CefGlueBrowserProcessDir)/9n1m.webview')">
+        <Exec Command="chmod +x &quot;$(OutDir)$(CefGlueBrowserProcessDir)/9n1m.webview&quot;" />
+    </Target>
+
+    <Target Name="Ensure9n1mWebViewExecutableInPublish"
+            AfterTargets="Publish"
+            Condition="!$([MSBuild]::IsOSPlatform('Windows')) And ('$(PublishDir)' != '') And ('$(RuntimeIdentifier)' == '' Or '$(RuntimeIdentifier)' == 'osx-x64' Or '$(RuntimeIdentifier)' == 'osx-arm64' Or '$(RuntimeIdentifier)' == 'linux-x64' Or '$(RuntimeIdentifier)' == 'linux-arm64') And Exists('$(PublishDir)$(CefGlueBrowserProcessDir)/9n1m.webview')">
+        <Exec Command="chmod +x &quot;$(PublishDir)$(CefGlueBrowserProcessDir)/9n1m.webview&quot;" />
+    </Target>
+</Project>

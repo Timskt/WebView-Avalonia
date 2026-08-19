@@ -1,0 +1,47 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>$(DotnetVersion)</TargetFramework>
+    <AssemblyName>9n1m.webview</AssemblyName>
+    <RootNamespace>Xilium.CefGlue.BrowserProcess</RootNamespace>
+    <RunPostBuildEvent>OnOutputUpdated</RunPostBuildEvent>
+    <PublishSingleFile>false</PublishSingleFile>
+    <UseAppHost>true</UseAppHost>
+    <RuntimeIdentifiers Condition="'$(IsPublishing)' != 'True' Or '$(RuntimeIdentifier)' == ''">osx-x64;win-x64;osx-arm64;win-arm64;linux-x64;linux-arm64</RuntimeIdentifiers>
+    <GenerateAssemblyInfo>false</GenerateAssemblyInfo>
+    <PublishCommonConfig>Configuration=$(Configuration);Platform=$(Platform);PlatformTarget=$(ArchitectureConfig);TargetFramework=$(TargetFramework);IsPublishing=True;PublishTrimmed=True;SelfContained=true;</PublishCommonConfig>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <None Remove="ObjectBinding\CefGlueGlobalScript.js" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <EmbeddedResource Include="ObjectBinding\CefGlueGlobalScript.js" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\CefGlue.Common.Shared\CefGlue.Common.Shared.csproj" />
+    <ProjectReference Include="..\CefGlue\CefGlue.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="System.Runtime.Loader" />
+  </ItemGroup>
+  
+  <Target Name="PublishApp" AfterTargets="AfterBuild" Condition="'$(_AssemblyTimestampBeforeCompile)' != '$(_AssemblyTimestampAfterCompile)' and '$(IsPublishing)' != 'True'">
+
+    <!-- WINDOWS -->
+    <Message Text="Publishing CefGlue.BrowserProcess on Windows ($(Platform))..." Importance="High" />
+    <MSBuild Projects="CefGlue.BrowserProcess.csproj" Targets="Publish" Properties="$(PublishCommonConfig)RuntimeIdentifier=win-$(ArchitectureConfig)" />
+
+    <!-- OSX -->
+    <Message Text="Publishing CefGlue.BrowserProcess on MacOS ($(Platform))..." Importance="High" />
+    <MSBuild Projects="CefGlue.BrowserProcess.csproj" Targets="Publish" Properties="$(PublishCommonConfig)RuntimeIdentifier=osx-$(ArchitectureConfig)" />
+
+    <!-- LINUX -->
+    <Message Text="Publishing CefGlue.BrowserProcess on Linux ($(Platform))..." Importance="High" />
+    <MSBuild Projects="CefGlue.BrowserProcess.csproj" Targets="Publish" Properties="$(PublishCommonConfig)RuntimeIdentifier=linux-$(ArchitectureConfig)" />
+  </Target>
+</Project>
