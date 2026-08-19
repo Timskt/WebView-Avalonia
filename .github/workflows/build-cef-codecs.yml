@@ -147,6 +147,29 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y pkg-config libcups2-dev
 
+      - name: Free macOS runner disk space
+        if: runner.os == 'macOS'
+        shell: bash
+        run: |
+          set -euxo pipefail
+          # Chromium/CEF 106/134 checkouts can exceed 40 GiB before the
+          # build starts. Keep the selected Xcode toolchain, but remove
+          # unused Xcode bundles, simulator runtimes, and SDK caches.
+          selected_developer_dir="$(xcode-select -p)"
+          selected_xcode_app="${selected_developer_dir%/Contents/Developer}"
+          for xcode_app in /Applications/Xcode*.app; do
+            if [[ -d "$xcode_app" && "$xcode_app" != "$selected_xcode_app" ]]; then
+              sudo rm -rf "$xcode_app"
+            fi
+          done
+          sudo rm -rf \
+            /Library/Developer/CoreSimulator \
+            "$HOME/Library/Developer/CoreSimulator" \
+            "$HOME/Library/Android" \
+            "$HOME/Library/Caches" \
+            "$HOME/.cache"
+          df -h
+
       - name: Bootstrap depot_tools
         shell: bash
         run: |
