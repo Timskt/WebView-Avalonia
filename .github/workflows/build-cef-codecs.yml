@@ -9,6 +9,9 @@ on:
       - feature/h264-h265-codecs
     paths:
       - .github/workflows/build-cef-codecs.yml
+      - config/cef-lines.json
+      - scripts/build-cef-codecs.sh
+      - scripts/cef_line_config.py
   workflow_dispatch:
     inputs:
       cef_line:

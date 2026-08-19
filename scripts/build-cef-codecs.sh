@@ -46,7 +46,9 @@ for required in ${EXPECTED_GN_DEFINES}; do
   fi
 done
 
-if [[ ! -x "${DEPOT_TOOLS_DIR}/gclient" ]]; then
+if [[ ! -f "${DEPOT_TOOLS_DIR}/gclient" \
+   && ! -f "${DEPOT_TOOLS_DIR}/gclient.py" \
+   && ! -f "${DEPOT_TOOLS_DIR}/gclient.bat" ]]; then
   echo "depot_tools not found at ${DEPOT_TOOLS_DIR}" >&2
   echo "Set DEPOT_TOOLS_DIR or bootstrap depot_tools before running this script." >&2
   exit 2
@@ -72,24 +74,42 @@ elif [[ "${CEF_ARCH}" != "x64" ]]; then
   exit 2
 fi
 
-extra_args=()
+# Keep this array non-empty. macOS ships Bash 3.2, where expanding an empty
+# array under `set -u` fails with "unbound variable".
+automate_args=(
+  --download-dir="${CEF_SOURCE_DIR}"
+  --depot-tools-dir="${DEPOT_TOOLS_DIR}"
+  --branch="${CEF_BRANCH}"
+  --checkout="${CEF_CHECKOUT}"
+  --chromium-checkout="refs/tags/${CHROMIUM_CHECKOUT}"
+  --minimal-distrib-only
+  --no-debug-build
+  --build-target=cefsimple
+  "${build_flag}"
+)
 if [[ -n "${GN_ARGUMENTS}" ]]; then
+  # GN_ARGUMENTS is an advanced CI escape hatch containing automate-git.py
+  # arguments. Intentional shell-style splitting preserves existing usage.
   # shellcheck disable=SC2206
   extra_args=( ${GN_ARGUMENTS} )
+  automate_args+=("${extra_args[@]}")
 fi
 
-python3 automate-git.py \
-  --download-dir="${CEF_SOURCE_DIR}" \
-  --depot-tools-dir="${DEPOT_TOOLS_DIR}" \
-  --branch="${CEF_BRANCH}" \
-  --checkout="${CEF_CHECKOUT}" \
-  --chromium-checkout="refs/tags/${CHROMIUM_CHECKOUT}" \
-  --minimal-distrib-only \
-  --no-chromium-history \
-  --no-debug-build \
-  --build-target=cefsimple \
-  "${build_flag}" \
-  "${extra_args[@]}"
+# Fail before the multi-hour checkout/build if a future pinned automate script
+# removes an argument that this wrapper relies on.
+python3 - automate-git.py "${automate_args[@]}" <<'PY'
+import re
+import sys
+from pathlib import Path
+
+source = Path(sys.argv[1]).read_text(encoding="utf-8")
+for option in sys.argv[2:]:
+    name = option.split("=", 1)[0]
+    if name.startswith("--") and re.search(r"[\"']" + re.escape(name) + r"[\"']", source) is None:
+        raise SystemExit(f"pinned automate-git.py does not support {name}")
+PY
+
+python3 automate-git.py "${automate_args[@]}"
 
 args_gn="$(find "${CEF_SOURCE_DIR}/chromium/src/out" -mindepth 2 -maxdepth 2 \
   -type f -name args.gn -path '*Release*' -print -quit)"
