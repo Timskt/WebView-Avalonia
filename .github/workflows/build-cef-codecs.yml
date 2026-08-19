@@ -1,6 +1,14 @@
 name: Build codec-enabled CEF 106 and 134
 
 on:
+  # Bootstrap this new workflow before it reaches the default branch. Limiting
+  # the push trigger to this workflow file prevents normal branch updates from
+  # repeatedly starting the very expensive Chromium build.
+  push:
+    branches:
+      - feature/h264-h265-codecs
+    paths:
+      - .github/workflows/build-cef-codecs.yml
   workflow_dispatch:
     inputs:
       cef_line:
