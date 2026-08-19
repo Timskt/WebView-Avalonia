@@ -35,7 +35,7 @@ permissions:
   contents: write
 
 concurrency:
-  group: cef-codecs-${{ github.ref }}-${{ inputs.cef_line }}
+  group: cef-codecs-${{ github.ref }}-${{ inputs.cef_line || 'both' }}
   cancel-in-progress: false
 
 env:
@@ -54,7 +54,7 @@ jobs:
         name: Generate selected line/RID matrices
         shell: bash
         env:
-          SELECTED_LINE: ${{ inputs.cef_line }}
+          SELECTED_LINE: ${{ inputs.cef_line || 'both' }}
         run: |
           python3 - <<'PY'
           import json
@@ -108,7 +108,7 @@ jobs:
           git diff --check
 
   build-cef:
-    if: inputs.build_cef
+    if: github.event_name == 'push' || inputs.build_cef
     needs: [prepare, validate]
     name: CEF ${{ matrix.line }} / ${{ matrix.rid }}
     timeout-minutes: 360
@@ -188,7 +188,7 @@ jobs:
           retention-days: 14
 
   package-managed:
-    if: inputs.build_cef && needs['build-cef'].result == 'success'
+    if: (github.event_name == 'push' || inputs.build_cef) && needs['build-cef'].result == 'success'
     needs: [prepare, build-cef]
     name: Managed packages / CEF ${{ matrix.line }}
     runs-on: macos-15
@@ -289,7 +289,7 @@ jobs:
           retention-days: 30
 
   release:
-    if: inputs.build_cef && inputs.publish_release
+    if: github.event_name == 'workflow_dispatch' && inputs.build_cef && inputs.publish_release
     needs: package-managed
     name: Create verified codec prerelease
     runs-on: ubuntu-24.04
