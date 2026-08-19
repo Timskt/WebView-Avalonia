@@ -153,7 +153,7 @@ jobs:
           set -euxo pipefail
           root="$RUNNER_TEMP/cef-$CEF_LINE-${{ matrix.rid }}"
           mkdir -p "$root"
-          git clone --depth 1 https://chromium.googlesource.com/chromium/tools/depot_tools.git "$root/depot_tools"
+          git clone --filter=blob:none https://chromium.googlesource.com/chromium/tools/depot_tools.git "$root/depot_tools"
 
       - name: Build exact pinned CEF with codec paths
         shell: bash
