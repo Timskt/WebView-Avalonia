@@ -36,6 +36,27 @@ Currently active tasks: src (Running ...)
 - 通过 `CEF_DIAGNOSTIC_INTERVAL_SECONDS` 可调整 heartbeat 周期；
 - 只保留本轮交付的 `CEF 106/win-x64` 和 `CEF 134/win-x64` 矩阵。
 
+## 远程构建复盘（2026-08-19）
+
+我重新检查了 GitHub Actions 运行记录：
+
+- `32251941588` 使用提交 `18a249c3`，`CEF 106 / win-x64` 与 `CEF 134 / win-x64`
+  都停留在 `Build exact pinned CEF with codec paths`，最终于
+  `2026-08-19 14:51:52 UTC` 取消；没有 runtime artifact，也没有 NuGet 包。
+- Windows 日志显示 Chromium `src` clone 由远端发送约 `73.66 GiB`，对象检查数量为
+  `67,108,864`。CEF 134 在对象检查完成后仍长时间处于 `gclient` 的 `src` 任务；CEF 106
+  还出现多次 `git fetch origin` 重试并重新 clone。
+- 日志开头还显示全新 Windows runner 没有 `C:/Users/runneradmin/.gitconfig`。这不是主因，
+  但会产生误导性的 fatal-looking warning。当前 workflow 已在 depot_tools 之前创建最小的
+  全局 Git 配置，并设置 Chromium 推荐的 checkout 参数。
+- 在最新提交上手动运行 `32269156668`（`build_cef=false`）已通过 workflow 输入、脚本、
+  精确 CEF 106/134 配置和 YAML 路径验证；它没有执行 native CEF checkout，因此不能替代
+  Windows 原生构建验证。
+
+结论是：问题不是 .NET 编译，而是 hosted runner 每次从空目录下载约 74 GiB 的 Chromium
+Git 数据，且任务结束后缓存全部丢失。下一次真实构建应使用持久化 Windows runner，并先只构建
+CEF 106；确认 runtime 包生成后再构建 CEF 134。
+
 ## 推荐的 Windows 构建方式
 
 使用持久化的 Windows 10/11 或 Windows Server x64 构建机：
