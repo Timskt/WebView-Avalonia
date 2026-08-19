@@ -1,26 +1,8 @@
 name: Build codec-enabled CEF 106 and 134
 
 on:
-  # Bootstrap this new workflow before it reaches the default branch. Limiting
-  # the push trigger to this workflow file prevents normal branch updates from
-  # repeatedly starting the very expensive Chromium build.
-  push:
-    branches:
-      - feature/h264-h265-codecs
-    paths:
-      - .github/workflows/build-cef-codecs.yml
-      - config/cef-lines.json
-      - scripts/build-cef-codecs.sh
-      - scripts/package-cef-runtime.py
-      - scripts/package-managed-codecs.sh
-      - scripts/verify-nuget-consumer.sh
-      - scripts/verify-package-layout.py
-      - scripts/cef_line_config.py
-      - vendor/CefGlue/CefGlue.Common/CefGlue.Common.csproj
-      - vendor/CefGlue-134/CefGlue.Packages.props
-      - WebView/WebViewControl.Avalonia/WebViewControl.Avalonia.csproj
-      - WebView/SampleWebView.Avalonia/MainWindow.xaml
-      - WebView/SampleWebView.Avalonia/MainWindowViewModel.cs
+  # CEF/Chromium checkout and compile is intentionally manual. A normal push
+  # must never start a multi-hour hosted-runner build from an empty workspace.
   workflow_dispatch:
     inputs:
       cef_line:
@@ -120,7 +102,7 @@ jobs:
           git diff --check
 
   build-cef:
-    if: github.event_name == 'push' || inputs.build_cef
+    if: inputs.build_cef
     needs: [prepare, validate]
     name: CEF ${{ matrix.line }} / ${{ matrix.rid }}
     timeout-minutes: 360
@@ -194,6 +176,7 @@ jobs:
           CEF_SOURCE_DIR: ${{ runner.temp }}/cef-${{ matrix.line }}-${{ matrix.rid }}/source
           CEF_ARCH: ${{ matrix.arch }}
           CEF_PLATFORM: ${{ runner.os }}
+          GIT_TERMINAL_PROMPT: '0'
         run: ./scripts/build-cef-codecs.sh
 
       - name: Package and verify codec runtime NuGet
@@ -223,7 +206,7 @@ jobs:
           retention-days: 14
 
   package-managed:
-    if: (github.event_name == 'push' || inputs.build_cef) && needs['build-cef'].result == 'success'
+    if: inputs.build_cef && needs['build-cef'].result == 'success'
     needs: [prepare, build-cef]
     name: Managed Windows x64 packages / CEF ${{ matrix.line }}
     runs-on: macos-15

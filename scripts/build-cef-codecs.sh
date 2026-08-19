@@ -58,9 +58,37 @@ if [[ "${CEF_PLATFORM}" == "macOS" && "${CEF_ARCH}" == "x64" ]]; then
   export CEF_ENABLE_AMD64=1
 fi
 export GN_DEFINES
+export GIT_TERMINAL_PROMPT="${GIT_TERMINAL_PROMPT:-0}"
 
 mkdir -p "${CEF_SOURCE_DIR}"
 cd "${CEF_SOURCE_DIR}"
+
+diagnostic_pid=""
+cleanup_diagnostics() {
+  if [[ -n "${diagnostic_pid}" ]]; then
+    kill "${diagnostic_pid}" 2>/dev/null || true
+    wait "${diagnostic_pid}" 2>/dev/null || true
+  fi
+}
+trap cleanup_diagnostics EXIT INT TERM
+
+# automate-git.py/gclient may legitimately be silent for a long time while Git
+# verifies or resolves Chromium objects. Emit runner-side diagnostics so a
+# stalled checkout can be distinguished from active disk/CPU work.
+(
+  while sleep "${CEF_DIAGNOSTIC_INTERVAL_SECONDS:-300}"; do
+    printf '[%s] CEF build heartbeat (line=%s platform=%s arch=%s)\n' \
+      "$(date '+%Y-%m-%d %H:%M:%S')" "${CEF_LINE}" "${CEF_PLATFORM}" "${CEF_ARCH}"
+    if command -v df >/dev/null 2>&1; then df -h "${CEF_SOURCE_DIR}" || true; fi
+    if command -v du >/dev/null 2>&1; then du -sh "${CEF_SOURCE_DIR}" 2>/dev/null || true; fi
+    if command -v ps >/dev/null 2>&1; then
+      ps -Ao pid,ppid,etime,%cpu,%mem,command 2>/dev/null \
+        | grep -E '[g]client|[g]it( |$)|[p]ython.*automate-git|[n]inja|[a]utoninja' \
+        | sed -n '1,80p' || true
+    fi
+  done
+) &
+diagnostic_pid=$!
 
 curl --fail --silent --show-error --location \
   "${AUTOMATE_GIT_URL}" \

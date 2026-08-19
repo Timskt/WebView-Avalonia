@@ -14,5 +14,6 @@
 - `docs/RELEASE-NOTES-CODECS-AND-SUBPROCESS.md`
 - `docs/CEF-CODEC-MAINTENANCE-GUIDE.md`
 - `docs/MEDIA-CODEC-VALIDATION.md`
+- `docs/LOCAL-BUILD-AND-DEMO.md`
 
 > H.265 依赖平台硬件/系统媒体能力；H.264/H.265 分发可能涉及专利和商业许可。
