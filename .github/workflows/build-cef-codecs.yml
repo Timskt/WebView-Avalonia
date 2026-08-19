@@ -161,6 +161,23 @@ jobs:
             "$HOME/.cache"
           df -h
 
+      - name: Configure Git for Chromium checkout
+        shell: bash
+        run: |
+          set -euxo pipefail
+          # depot_tools probes the user's global Git config before gclient sync.
+          # Fresh GitHub Windows images may not have ~/.gitconfig at all; create
+          # a minimal, non-secret config and apply Chromium's recommended flags
+          # so the probe is not reported as a fatal-looking warning.
+          git config --global user.name "CEF build runner"
+          git config --global user.email "cef-build@localhost"
+          git config --global core.autocrlf false
+          git config --global core.filemode false
+          git config --global core.longpaths true
+          git config --global core.deltaBaseCacheLimit 2g
+          git config --global fetch.parallel 1
+          git config --global http.version HTTP/1.1
+
       - name: Bootstrap depot_tools
         shell: bash
         run: |
