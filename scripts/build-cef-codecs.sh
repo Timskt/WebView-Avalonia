@@ -94,6 +94,31 @@ curl --fail --silent --show-error --location \
   "${AUTOMATE_GIT_URL}" \
   --output automate-git.py
 
+# CEF's automate-git.py performs an initial `gclient sync` before it applies
+# --chromium-checkout. The upstream script leaves that first solution
+# unpinned, so gclient follows Chromium main and can download tens of GiB
+# before it ever reaches the requested historical tag. Pin the solution URL in
+# the automate arguments and make that first clone shallow. This is important
+# for CEF 106: its pinned depot_tools cannot parse the modern Chromium main
+# DEPS schema (`dep_type: gcs`), while the CEF-compatible tag can be parsed.
+# The patch is local to the downloaded, pinned automation script and does not
+# modify the upstream CEF checkout or the repository's source tree.
+python3 - "automate-git.py" <<'PY'
+import pathlib
+import sys
+
+path = pathlib.Path(sys.argv[1])
+source = path.read_text(encoding="utf-8")
+needle = "gclient sync --nohooks --with_branch_heads --jobs 16"
+replacement = "gclient sync --nohooks --with_branch_heads --no-history --jobs 16"
+if source.count(needle) != 1:
+    raise SystemExit(
+        "Unable to patch automate-git.py: expected one initial gclient sync"
+    )
+path.write_text(source.replace(needle, replacement, 1), encoding="utf-8")
+print("Enabled shallow initial Chromium checkout (--no-history)")
+PY
+
 build_flag=--x64-build
 if [[ "${CEF_ARCH}" == "arm64" ]]; then
   build_flag=--arm64-build
@@ -110,6 +135,7 @@ automate_args=(
   --branch="${CEF_BRANCH}"
   --checkout="${CEF_CHECKOUT}"
   --chromium-checkout="refs/tags/${CHROMIUM_CHECKOUT}"
+  --chromium-url="https://chromium.googlesource.com/chromium/src.git@refs/tags/${CHROMIUM_CHECKOUT}"
   --minimal-distrib-only
   --no-debug-build
   --build-target=cefsimple

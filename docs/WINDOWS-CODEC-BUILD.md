@@ -65,6 +65,23 @@ WebViewControl-Avalonia.<version>.nupkg
 runtime package，避免因为尚未生成的 macOS/Linux native 包导致 restore 失败。该属性
 为空时仍保持六 RID 的原有默认行为。
 
+## 首次 gclient checkout 防护
+
+CEF 的 `automate-git.py` 默认会先执行一次未指定 revision 的 `gclient sync`，再处理
+`--chromium-checkout`。对于 CEF 106，这会把 pinned 旧版 `depot_tools` 带到当前
+Chromium `main` 的 DEPS schema，常见报错是：
+
+```text
+src/third_party/js_code_coverage/node_modules
+Missing keys: 'packages'
+```
+
+`build-cef-codecs.sh` 会在 runner 临时目录中对下载的 automate 脚本做最小补丁，并传入
+带 `@refs/tags/<exact Chromium tag>` 的 `--chromium-url`，同时让首次 sync 使用
+`--no-history`。这样第一次解析 DEPS 的就是 CEF 106/134 对应的历史 Chromium tag，
+而不是当前 main。这个补丁不修改上游 CEF 源码；如果未来 CEF automate 脚本改变了
+初始 sync 命令，脚本会主动失败而不是静默退回未锁定 checkout。
+
 ## 必做验证
 
 ### 静态检查

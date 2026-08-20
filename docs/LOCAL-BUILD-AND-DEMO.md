@@ -179,3 +179,24 @@ Run `32251941588` 的两个 native job 均在 CEF checkout/build 阶段运行约
 没有生成 runtime artifact，随后主动取消。该次运行的取消不代表源码或 pipeline 失败，
 但它证明 GitHub hosted runner 不适合本项目的首次 CEF 全量 checkout。后续应在持久化
 Windows runner 上单独运行 CEF 106，再运行 CEF 134，并保留 heartbeat/诊断输出。
+
+### 2026-08-19 CEF 106 失败原因与修复
+
+Run `32272314306` 最终在 `gclient sync` 处失败，失败发生在 **2026 年 8 月 19 日
+18:40 UTC**，而不是发生在 codec 编译阶段。CEF 106 的 pinned `depot_tools` 解析到了
+Chromium `main` 的新式 DEPS 项：`src/third_party/js_code_coverage/node_modules`
+使用了 `dep_type: gcs`，旧版 schema 报错 `Missing keys: 'packages'`。
+
+根因是 CEF 的 `automate-git.py` 在应用 `--chromium-checkout` 之前执行了第一次未锁定
+的 `gclient sync`，导致 runner 先同步 Chromium main。`scripts/build-cef-codecs.sh` 现
+在同时做两项防护：
+
+1. 通过 `--chromium-url=https://chromium.googlesource.com/chromium/src.git@refs/tags/<exact-tag>`
+   让第一次 gclient solution 直接指向精确的 CEF-compatible Chromium tag；
+2. 对下载到 runner 临时目录的 pinned `automate-git.py`，仅将第一次 sync 增加
+   `--no-history`，减少无用 Git 历史下载。
+
+这不是绕过 CEF/Chromium pin，也不是把 synthetic runtime 当作正式产物。修复后仍会在
+生成 args.gn、CEF binary distribution、runtime NuGet 和 consumer package 时验证精确
+CEF/Chromium checkout 与全部 codec GN flags。重跑前应确认日志中第一次 gclient sync
+已经包含 `--no-history`，且 `.gclient` 的 `src` URL 带有 `@refs/tags/<exact-tag>`。
