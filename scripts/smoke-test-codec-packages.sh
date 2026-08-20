@@ -2,6 +2,8 @@
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+source "${SCRIPT_DIR}/lib/common.sh"
+resolve_python
 REPO_ROOT="$(cd "${SCRIPT_DIR}/.." && pwd)"
 selection="${1:-both}"
 work="${2:-$REPO_ROOT/artifacts/synthetic-smoke}"
@@ -19,11 +21,11 @@ work="$(cd "$work" && pwd)"
 feed="$work/feed"
 
 for line in "${lines[@]}"; do
-  eval "$(python3 "$SCRIPT_DIR/cef_line_config.py" "$line" --format shell)"
+  eval "$("${PYTHON_BIN}" "$SCRIPT_DIR/cef_line_config.py" "$line" --format shell)"
   for rid in win-x64 win-arm64 osx-x64 osx-arm64 linux-x64 linux-arm64; do
     fixture="$work/fixtures/$line/$rid"
-    python3 "$SCRIPT_DIR/create-synthetic-cef-fixture.py" --line "$line" --rid "$rid" --output "$fixture"
-    python3 "$SCRIPT_DIR/package-cef-runtime.py" --line "$line" --rid "$rid" \
+    "${PYTHON_BIN}" "$SCRIPT_DIR/create-synthetic-cef-fixture.py" --line "$line" --rid "$rid" --output "$fixture"
+    "${PYTHON_BIN}" "$SCRIPT_DIR/package-cef-runtime.py" --line "$line" --rid "$rid" \
       --source "$fixture" --version "$CEF_RUNTIME_VERSION" --output "$feed" --codec-enabled --allow-synthetic
     package_id=""
     case "$rid" in
@@ -34,7 +36,7 @@ for line in "${lines[@]}"; do
       linux-x64) package_id=cef.redist.linux64 ;;
       linux-arm64) package_id=cef.redist.linuxarm64 ;;
     esac
-    python3 "$SCRIPT_DIR/verify-package-layout.py" \
+    "${PYTHON_BIN}" "$SCRIPT_DIR/verify-package-layout.py" \
       "$feed/$package_id.$CEF_RUNTIME_VERSION.nupkg" --kind runtime --line "$line" --rid "$rid" --allow-synthetic
   done
 done

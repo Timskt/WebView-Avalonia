@@ -2,6 +2,8 @@
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+source "${SCRIPT_DIR}/lib/common.sh"
+resolve_python
 ALL_RIDS=(win-x64 win-arm64 osx-x64 osx-arm64 linux-x64 linux-arm64)
 
 usage() {
@@ -50,7 +52,7 @@ fi
 nuget_config="$(cd "$(dirname "$nuget_config")" && pwd)/$(basename "$nuget_config")"
 [[ -f "$nuget_config" ]] || { echo "NuGet config not found: $nuget_config" >&2; exit 2; }
 work="$(mkdir -p "$work" && cd "$work" && pwd)"
-eval "$(python3 "$SCRIPT_DIR/cef_line_config.py" "$line" --format shell)"
+eval "$("${PYTHON_BIN}" "$SCRIPT_DIR/cef_line_config.py" "$line" --format shell)"
 
 for rid in "${rids[@]}"; do
   if [[ "$rid" == *arm64 ]]; then
@@ -84,6 +86,6 @@ EOF_PROJECT
   printf '%s\n' 'Console.WriteLine("WebView codec package consumer smoke test");' > "$project_dir/Program.cs"
   dotnet restore "$project_dir/Consumer.csproj" --force --configfile "$nuget_config"
   dotnet build "$project_dir/Consumer.csproj" -c Release --no-restore
-  python3 "$SCRIPT_DIR/verify-package-layout.py" \
+  "${PYTHON_BIN}" "$SCRIPT_DIR/verify-package-layout.py" \
     "$project_dir/bin/$platform/Release/$TARGET_FRAMEWORK/$rid" --kind consumer --line "$line" --rid "$rid"
 done

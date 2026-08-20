@@ -1,0 +1,11 @@
+.git
+.cef-cache
+.cef-docker
+.tmp
+artifacts
+.dotnet-home
+local-nuget
+**/bin
+**/obj
+**/.DS_Store
+**/*.nupkg

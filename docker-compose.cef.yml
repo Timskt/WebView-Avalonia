@@ -1,0 +1,63 @@
+name: webview-cef-codecs
+
+x-cef-common: &cef-common
+  init: true
+  working_dir: /workspace
+  shm_size: 2gb
+  environment:
+    CEF_DIAGNOSTIC_INTERVAL_SECONDS: ${CEF_DIAGNOSTIC_INTERVAL_SECONDS:-300}
+    GIT_TERMINAL_PROMPT: "0"
+  volumes:
+    - ./:/workspace
+    - ./artifacts/docker:/artifacts
+
+services:
+  cef106-linux-x64:
+    <<: *cef-common
+    profiles: ["106", "all"]
+    platform: linux/amd64
+    build:
+      context: .
+      dockerfile: docker/cef-builder/Dockerfile
+      args:
+        BASE_IMAGE: ubuntu:20.04
+        BUILDER_UID: ${LOCAL_UID:-1000}
+        BUILDER_GID: ${LOCAL_GID:-1000}
+    volumes:
+      - ./:/workspace
+      - ./artifacts/docker:/artifacts
+      - ./.cef-docker/106-linux-x64:/cache
+    command:
+      - --line
+      - "106"
+      - --rid
+      - linux-x64
+      - --cache
+      - /cache
+      - --output
+      - /artifacts
+
+  cef134-linux-x64:
+    <<: *cef-common
+    profiles: ["134", "all"]
+    platform: linux/amd64
+    build:
+      context: .
+      dockerfile: docker/cef-builder/Dockerfile
+      args:
+        BASE_IMAGE: ubuntu:22.04
+        BUILDER_UID: ${LOCAL_UID:-1000}
+        BUILDER_GID: ${LOCAL_GID:-1000}
+    volumes:
+      - ./:/workspace
+      - ./artifacts/docker:/artifacts
+      - ./.cef-docker/134-linux-x64:/cache
+    command:
+      - --line
+      - "134"
+      - --rid
+      - linux-x64
+      - --cache
+      - /cache
+      - --output
+      - /artifacts

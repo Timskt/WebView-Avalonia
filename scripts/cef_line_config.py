@@ -6,13 +6,13 @@ import argparse
 import json
 import shlex
 from pathlib import Path
-from typing import Any
+from typing import Any, Dict
 
 ROOT = Path(__file__).resolve().parents[1]
 CONFIG_PATH = ROOT / "config" / "cef-lines.json"
 
 
-def load_cef_line(line: str) -> dict[str, Any]:
+def load_cef_line(line: str) -> Dict[str, Any]:
     data = json.loads(CONFIG_PATH.read_text(encoding="utf-8"))
     try:
         config = data[str(line)]
@@ -25,7 +25,7 @@ def load_cef_line(line: str) -> dict[str, Any]:
     return config
 
 
-def environment_for_line(line: str) -> dict[str, str]:
+def environment_for_line(line: str) -> Dict[str, str]:
     config = load_cef_line(line)
     return {
         "CEF_LINE": config["line"],

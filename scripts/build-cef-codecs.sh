@@ -5,9 +5,11 @@ set -euo pipefail
 # paths enabled. Exact pins and package versions live in config/cef-lines.json.
 CEF_LINE="${CEF_LINE:-${1:-134}}"
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+source "${SCRIPT_DIR}/lib/common.sh"
+resolve_python
 REPO_ROOT="$(cd "${SCRIPT_DIR}/.." && pwd)"
 
-eval "$(python3 - "${REPO_ROOT}" "${CEF_LINE}" <<'PY'
+eval "$("${PYTHON_BIN}" - "${REPO_ROOT}" "${CEF_LINE}" <<'PY'
 import json, shlex, sys
 from pathlib import Path
 root = Path(sys.argv[1])
@@ -38,6 +40,17 @@ case "${CEF_PLATFORM:-${RUNNER_OS:-$(uname -s)}}" in
   Linux) CEF_PLATFORM=Linux ;;
   *) echo "Unsupported CEF platform: ${CEF_PLATFORM:-unknown}" >&2; exit 2 ;;
 esac
+
+if [[ "${CEF_PLATFORM}" == Windows ]]; then
+  # Public Chromium/CEF builders must use the locally installed Visual Studio
+  # and Windows SDK instead of Google's internal downloadable toolchain.
+  export DEPOT_TOOLS_WIN_TOOLCHAIN="${DEPOT_TOOLS_WIN_TOOLCHAIN:-0}"
+  if [[ "${CEF_LINE}" == 106 ]]; then
+    export GYP_MSVS_VERSION="${GYP_MSVS_VERSION:-2019}"
+  else
+    export GYP_MSVS_VERSION="${GYP_MSVS_VERSION:-2022}"
+  fi
+fi
 
 for required in ${EXPECTED_GN_DEFINES}; do
   if [[ " ${GN_DEFINES} " != *" ${required} "* ]]; then
@@ -103,7 +116,7 @@ curl --fail --silent --show-error --location \
 # DEPS schema (`dep_type: gcs`), while the CEF-compatible tag can be parsed.
 # The patch is local to the downloaded, pinned automation script and does not
 # modify the upstream CEF checkout or the repository's source tree.
-python3 - "automate-git.py" <<'PY'
+"${PYTHON_BIN}" - "automate-git.py" <<'PY'
 import pathlib
 import sys
 
@@ -151,7 +164,7 @@ fi
 
 # Fail before the multi-hour checkout/build if a future pinned automate script
 # removes an argument that this wrapper relies on.
-python3 - automate-git.py "${automate_args[@]}" <<'PY'
+"${PYTHON_BIN}" - automate-git.py "${automate_args[@]}" <<'PY'
 import re
 import sys
 from pathlib import Path
@@ -163,7 +176,7 @@ for option in sys.argv[2:]:
         raise SystemExit(f"pinned automate-git.py does not support {name}")
 PY
 
-python3 automate-git.py "${automate_args[@]}"
+"${PYTHON_BIN}" automate-git.py "${automate_args[@]}"
 
 args_gn="$(find "${CEF_SOURCE_DIR}/chromium/src/out" -mindepth 2 -maxdepth 2 \
   -type f -name args.gn -path '*Release*' -print -quit)"
@@ -179,7 +192,7 @@ for required in ${EXPECTED_GN_DEFINES}; do
     exit 2
   fi
 done
-args_gn_sha256="$(python3 - "${args_gn}" <<'PY'
+args_gn_sha256="$("${PYTHON_BIN}" - "${args_gn}" <<'PY'
 import hashlib, sys
 print(hashlib.sha256(open(sys.argv[1], 'rb').read()).hexdigest())
 PY

@@ -14,3 +14,8 @@ vendor/CefGlue*/NuGet/output/
 *.nupkg
 scripts/**/__pycache__/
 **/.DS_Store
+# Persistent Docker/Compose Chromium workspaces (often hundreds of GiB)
+.cef-cache/
+.cef-docker/
+.tmp/
+artifacts/validation/

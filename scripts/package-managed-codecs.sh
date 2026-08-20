@@ -2,6 +2,8 @@
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+source "${SCRIPT_DIR}/lib/common.sh"
+resolve_python
 REPO_ROOT="$(cd "${SCRIPT_DIR}/.." && pwd)"
 ALL_RIDS=(win-x64 win-arm64 osx-x64 osx-arm64 linux-x64 linux-arm64)
 
@@ -74,7 +76,7 @@ feed="$(mkdir -p "$feed" && cd "$feed" && pwd)"
 nuget_config="$(cd "$(dirname "$nuget_config")" && pwd)/$(basename "$nuget_config")"
 [[ -f "$nuget_config" ]] || { echo "NuGet config not found: $nuget_config" >&2; exit 2; }
 
-eval "$(python3 "$SCRIPT_DIR/cef_line_config.py" "$line" --format shell)"
+eval "$("${PYTHON_BIN}" "$SCRIPT_DIR/cef_line_config.py" "$line" --format shell)"
 cefglue_root="$REPO_ROOT/$CEFGLUE_DIR"
 [[ -d "$cefglue_root" ]] || { echo "Vendored CefGlue source not found: $cefglue_root" >&2; exit 2; }
 
@@ -110,7 +112,7 @@ for rid in "${rids[@]}"; do
   else
     cefglue_package="$feed/CefGlue.Common.$CEFGLUE_VERSION.nupkg"
   fi
-  python3 "$SCRIPT_DIR/verify-package-layout.py" \
+  "${PYTHON_BIN}" "$SCRIPT_DIR/verify-package-layout.py" \
     "$cefglue_package" --kind cefglue --line "$line" --rid "$rid"
 done
 
@@ -132,6 +134,6 @@ for platform in "${platforms[@]}"; do
     webview_package="$feed/WebViewControl-Avalonia.$WEBVIEW_VERSION.nupkg"
     arch="x64"
   fi
-  python3 "$SCRIPT_DIR/verify-package-layout.py" \
+  "${PYTHON_BIN}" "$SCRIPT_DIR/verify-package-layout.py" \
     "$webview_package" --kind webview --line "$line" --arch "$arch"
 done

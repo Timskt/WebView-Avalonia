@@ -7,6 +7,7 @@ import shutil
 import tempfile
 import zipfile
 from pathlib import Path
+from typing import List, Optional, Tuple
 from xml.sax.saxutils import escape
 
 from cef_line_config import load_cef_line
@@ -39,7 +40,7 @@ def parse_args() -> argparse.Namespace:
     return parser.parse_args()
 
 
-def candidate_roots(source: Path) -> list[Path]:
+def candidate_roots(source: Path) -> List[Path]:
     if not source.is_dir():
         raise SystemExit(f"CEF source directory does not exist: {source}")
     children = [path for path in source.iterdir() if path.is_dir()]
@@ -47,7 +48,7 @@ def candidate_roots(source: Path) -> list[Path]:
     return [source, *children]
 
 
-def find_payload(source: Path) -> tuple[Path, Path | None, Path]:
+def find_payload(source: Path) -> Tuple[Path, Optional[Path], Path]:
     for candidate in candidate_roots(source.resolve()):
         if (candidate / "CEF").is_dir():
             root = candidate / "CEF"
@@ -59,7 +60,7 @@ def find_payload(source: Path) -> tuple[Path, Path | None, Path]:
     raise SystemExit(f"Could not find CEF payload under {source}")
 
 
-def find_upwards(start: Path, filename: str, stop: Path) -> Path | None:
+def find_upwards(start: Path, filename: str, stop: Path) -> Optional[Path]:
     current, stop = start.resolve(), stop.resolve()
     while True:
         candidate = current / filename
@@ -103,7 +104,7 @@ def copy_tree_contents(source: Path, destination: Path) -> None:
             shutil.copy2(item, target)
 
 
-def stage_payload(payload: Path, resources: Path | None, rid: str, stage: Path) -> None:
+def stage_payload(payload: Path, resources: Optional[Path], rid: str, stage: Path) -> None:
     if rid.startswith("win-"):
         target = stage / "runtimes" / rid / "native"
         release = payload / "Release"
@@ -121,7 +122,7 @@ def stage_payload(payload: Path, resources: Path | None, rid: str, stage: Path) 
         copy_tree_contents(resources, target / "Resources" if not (target / "Resources").exists() else target / "Resources")
 
 
-def locate_license(distribution_root: Path, source_root: Path) -> Path | None:
+def locate_license(distribution_root: Path, source_root: Path) -> Optional[Path]:
     for name in ("LICENSE.txt", "LICENSE", "cef/LICENSE.txt"):
         candidate = distribution_root / name
         if candidate.is_file():

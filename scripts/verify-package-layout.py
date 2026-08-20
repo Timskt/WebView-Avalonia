@@ -8,6 +8,7 @@ import os
 import stat
 import zipfile
 from pathlib import Path
+from typing import Dict, Set, Tuple, Union
 from xml.etree import ElementTree
 
 from cef_line_config import load_cef_line
@@ -23,7 +24,7 @@ def fail(target: Path, message: str) -> None:
     raise SystemExit(f"{target}: {message}")
 
 
-def read_archive(package: Path) -> tuple[set[str], dict[str, bytes]]:
+def read_archive(package: Path) -> Tuple[Set[str], Dict[str, bytes]]:
     if not package.is_file():
         fail(package, "package does not exist")
     try:
@@ -60,7 +61,7 @@ def verify_runtime(package: Path, line: str, rid: str, allow_synthetic: bool) ->
     print(f"verified CEF {line} codec runtime ({rid}): {package}")
 
 
-def verify_executable_format(data: bytes, rid: str, target: Path | str) -> None:
+def verify_executable_format(data: bytes, rid: str, target: Union[Path, str]) -> None:
     expected_arch = "arm64" if rid.endswith("arm64") else "x64"
     actual_platform = "unknown"
     actual_arch = "unknown"
@@ -100,7 +101,7 @@ def verify_cefglue(package: Path, line: str, rid: str) -> None:
     print(f"verified CefGlue {line} subprocess package ({rid}): {package}")
 
 
-def nuspec_dependency_versions(contents: dict[str, bytes]) -> dict[str, str]:
+def nuspec_dependency_versions(contents: Dict[str, bytes]) -> Dict[str, str]:
     nuspecs = [name for name in contents if name.lower().endswith(".nuspec")]
     if len(nuspecs) != 1:
         raise ValueError(f"expected one .nuspec, found {len(nuspecs)}")
