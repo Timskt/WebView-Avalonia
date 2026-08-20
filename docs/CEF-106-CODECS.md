@@ -41,9 +41,11 @@ proprietary_codecs=true
 ffmpeg_branding=Chrome
 enable_platform_hevc=true
 enable_hevc_parser_and_hw_decoder=true
+chrome_pgo_phase=0
 ```
 
-H.264 通过 Chromium proprietary codec 路径启用。H.265/HEVC 在该版本主要是
+H.264 通过 Chromium proprietary codec 路径启用。为避免固定 Chromium 版本缺少 PGO profile 导致 GN 生成失败，构建显式设置
+`chrome_pgo_phase=0`；这不影响 H.264/HEVC codec 路径。H.265/HEVC 在该版本主要是
 **平台硬件解码路径**；上述开关不等于在每台 Windows、macOS、Linux、虚拟机或
 ARM 设备上都提供软件 HEVC 解码器。
 

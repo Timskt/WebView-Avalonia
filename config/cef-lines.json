@@ -20,7 +20,8 @@
       "proprietary_codecs=true",
       "ffmpeg_branding=Chrome",
       "enable_platform_hevc=true",
-      "enable_hevc_parser_and_hw_decoder=true"
+      "enable_hevc_parser_and_hw_decoder=true",
+      "chrome_pgo_phase=0"
     ],
     "target_framework": "net6.0"
   },
@@ -44,7 +45,8 @@
       "proprietary_codecs=true",
       "ffmpeg_branding=Chrome",
       "enable_platform_hevc=true",
-      "enable_hevc_parser_and_hw_decoder=true"
+      "enable_hevc_parser_and_hw_decoder=true",
+      "chrome_pgo_phase=0"
     ],
     "target_framework": "net8.0"
   }

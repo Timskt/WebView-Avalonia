@@ -41,9 +41,11 @@ proprietary_codecs=true
 ffmpeg_branding=Chrome
 enable_platform_hevc=true
 enable_hevc_parser_and_hw_decoder=true
+chrome_pgo_phase=0
 ```
 
 H.264 使用 Chromium proprietary codec 路径。H.265/HEVC 是平台解析和硬件解码路径，
+为避免固定 Chromium 版本缺少 PGO profile 导致 GN 生成失败，构建显式关闭 PGO 优化；这不影响 H.264/HEVC codec 路径。
 实际播放仍受操作系统媒体组件、GPU、驱动、视频 profile 和授权条件影响。构建成功不等于
 所有设备上都能软件解码 HEVC。
 
@@ -576,7 +578,7 @@ Python 后重新打开终端，再运行同一个预检命令。
 
 - [ ] `PHYSICAL_BUILD_PREFLIGHT.json` 的 `ok` 为 `true`；
 - [ ] `CEF_CODEC_BUILD_INFO.txt` 精确匹配 CEF/Chromium pins；
-- [ ] marker 包含全部 5 个 codec GN flags；
+- [ ] marker 包含全部 5 个 codec GN flags，并包含 `chrome_pgo_phase=0`；
 - [ ] marker 不含 `SYNTHETIC_FIXTURE=true`；
 - [ ] runtime NuGet layout verifier 通过；
 - [ ] CefGlue/WebView managed pack 通过；

@@ -48,3 +48,10 @@
 CefGlue 两条 vendored 依赖基线仍使用 `System.Text.Json 6.0.1`，`dotnet restore` 会报告
 `GHSA-8g4q-xg66-9fp4` 高严重性 advisory。此次更新没有未经兼容性验证就升级该依赖；
 正式发布前必须由项目维护者决定升级并完成两条 CEF 线的完整验证，或明确记录风险接受。
+
+## 远程构建失败修复
+
+- 修复 CEF 134 / Chromium 134.0.6998.178 在 Windows 生成 GN 时因缺少 PGO `.profdata` 而失败的问题；
+- 两条产品线显式加入 `chrome_pgo_phase=0`，关闭依赖额外下载 profile 的 PGO 优化；
+- 该设置不改变 `proprietary_codecs`、`ffmpeg_branding=Chrome`、平台 HEVC parser/hardware decoder 等 codec 配置；
+- 物理机构建输出的 `CEF_CODEC_BUILD_INFO.txt` 会记录该构建参数，便于后续复核。

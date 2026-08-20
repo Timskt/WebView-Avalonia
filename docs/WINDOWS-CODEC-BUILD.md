@@ -21,7 +21,11 @@ proprietary_codecs=true
 ffmpeg_branding=Chrome
 enable_platform_hevc=true
 enable_hevc_parser_and_hw_decoder=true
+chrome_pgo_phase=0
 ```
+
+构建还显式使用 `chrome_pgo_phase=0`，避免固定 Chromium 源码缺少 PGO profile 时
+`gn gen` 失败。
 
 这些构建参数用于启用 Chromium 的 H.264 路径，并启用平台 HEVC/H.265 解析与硬件
 解码路径；它们不代表完成专利、系统组件或商业授权。H.265 是否实际可播仍取决于

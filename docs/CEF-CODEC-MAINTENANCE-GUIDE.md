@@ -43,6 +43,9 @@ git show <cef-sha>:CHROMIUM_BUILD_COMPATIBILITY.txt
 `cef_version.h` 用于确认 CEF/Chromium 版本；
 `CHROMIUM_BUILD_COMPATIBILITY.txt` 用于确认 CEF 期望的 Chromium checkout。
 
+> 固定 CEF/Chromium 构建默认使用 `chrome_pgo_phase=0`。除非同步提供匹配的 PGO profile，
+> 不要改为 phase 2；否则 `gn gen` 可能因缺少 `chrome/build/pgo_profiles/*.profdata` 失败。
+
 ### 2. 固定 CefGlue source
 
 1. 选择与目标 CEF API 相符的 OutSystems/CefGlue commit；
@@ -69,6 +72,7 @@ proprietary_codecs=true
 ffmpeg_branding=Chrome
 enable_platform_hevc=true
 enable_hevc_parser_and_hw_decoder=true
+chrome_pgo_phase=0
 ```
 
 GN flag 被删除、重命名或变为 no-op 时必须停止发布并调查，不可仅凭构建成功继续。

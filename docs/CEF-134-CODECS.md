@@ -39,8 +39,10 @@ proprietary_codecs=true
 ffmpeg_branding=Chrome
 enable_platform_hevc=true
 enable_hevc_parser_and_hw_decoder=true
+chrome_pgo_phase=0
 ```
 
+- `chrome_pgo_phase=0`：关闭依赖额外下载 `.profdata` 的 PGO 优化，避免固定源码缺失 profile 时 GN 生成失败。
 - H.264：启用 Chromium proprietary codec/Chrome FFmpeg branding 路径。
 - H.265/HEVC：启用 parser 和平台硬件解码路径。
 - HEVC 结果依赖操作系统、GPU、driver、系统媒体组件和 Chromium 对该平台的实现。
