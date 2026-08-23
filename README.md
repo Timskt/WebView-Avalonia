@@ -1,5 +1,10 @@
 # WebView-Avalonia codec builds
 
+Distribution and consumer instructions are documented in:
+
+- [`docs/PACKAGE-AND-DISTRIBUTION.md`](docs/PACKAGE-AND-DISTRIBUTION.md)
+- [`docs/USING-CODEC-PACKAGES.md`](docs/USING-CODEC-PACKAGES.md)
+
 本分支维护两条固定 CEF 产品线，并为 Windows、macOS、Linux 的 x64/ARM64
 构建 H.264 与平台 H.265/HEVC 路径：
 

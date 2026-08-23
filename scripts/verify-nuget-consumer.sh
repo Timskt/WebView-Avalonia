@@ -62,6 +62,26 @@ for rid in "${rids[@]}"; do
     package_id="WebViewControl-Avalonia"
     platform="x64"
   fi
+  clear_nuget_package_cache "$package_id" "$WEBVIEW_VERSION"
+  if [[ "$platform" == "ARM64" ]]; then
+    clear_nuget_package_cache CefGlue.Common.ARM64 "$CEFGLUE_VERSION"
+    clear_nuget_package_cache CefGlue.Avalonia.ARM64 "$CEFGLUE_VERSION"
+  else
+    clear_nuget_package_cache CefGlue.Common "$CEFGLUE_VERSION"
+    clear_nuget_package_cache CefGlue.Avalonia "$CEFGLUE_VERSION"
+  fi
+  case "$rid" in
+    win-x64) runtime_package_id=chromiumembeddedframework.runtime.win-x64 ;;
+    win-arm64) runtime_package_id=chromiumembeddedframework.runtime.win-arm64 ;;
+    osx-x64) runtime_package_id=cef.redist.osx64 ;;
+    osx-arm64) runtime_package_id=cef.redist.osx.arm64 ;;
+    linux-x64) runtime_package_id=cef.redist.linux64 ;;
+    linux-arm64) runtime_package_id=cef.redist.linuxarm64 ;;
+  esac
+  clear_nuget_package_cache "$runtime_package_id" "$CEF_RUNTIME_VERSION"
+  if [[ "$rid" == win-* ]]; then
+    clear_nuget_package_cache chromiumembeddedframework.runtime "$CEF_RUNTIME_VERSION"
+  fi
   project_dir="$work/$line/$rid"
   rm -rf "$project_dir"
   mkdir -p "$project_dir"

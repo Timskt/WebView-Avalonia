@@ -1,6 +1,10 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+# Git for Windows can inherit a malformed Windows PATH when launched from
+# PowerShell. Keep Git Bash's POSIX tools available before resolving paths.
+export PATH="/usr/bin:/mingw64/bin:${PATH}"
+
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 source "${SCRIPT_DIR}/lib/common.sh"
 resolve_python
@@ -82,7 +86,9 @@ if [[ "$host_prefix" == win ]] && command -v cygpath >/dev/null 2>&1; then
   output_root="$(cygpath -u "$output_root")"
 fi
 mkdir -p "$cache_root" "$output_root/logs"
-cache_root="$(cd "$cache_root" && pwd)"
+if [[ "$host_prefix" != win || "$cache_root" != /[a-zA-Z]/* ]]; then
+  cache_root="$(cd "$cache_root" && pwd)"
+fi
 output_root="$(cd "$output_root" && pwd)"
 
 for line in "${lines[@]}"; do

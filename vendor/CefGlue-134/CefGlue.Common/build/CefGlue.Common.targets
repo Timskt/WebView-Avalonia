@@ -76,8 +76,7 @@
             <CefRuntimeLocales Include="@(CefRuntimeWinArm64Locales)" Condition="'$(CefGlueTargetPlatform)' == 'win-arm64'" />
             <None Include="@(CefRuntimeLocales)">
                 <Visible>false</Visible>
-                <Link>runtimes\$(CefGlueTargetPlatform)
-ative\locales\%(RecursiveDir)%(FileName)%(Extension)</Link>
+                <Link>runtimes\$(CefGlueTargetPlatform)\native\locales\%(RecursiveDir)%(FileName)%(Extension)</Link>
                 <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
                 <CopyToPublishDirectory>Never</CopyToPublishDirectory>
             </None>

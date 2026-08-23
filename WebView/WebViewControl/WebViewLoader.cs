@@ -35,6 +35,7 @@ namespace WebViewControl {
                 LogFile = settings.LogFile,
                 UncaughtExceptionStackSize = 100, // enable stack capture
                 CachePath = settings.CachePath, // enable cache for external resources to speedup loading
+                LocalesDirPath = Path.Combine(AppContext.BaseDirectory, "locales"),
                 WindowlessRenderingEnabled = settings.OsrEnabled,
                 RemoteDebuggingPort = settings.GetRemoteDebuggingPort(),
                 UserAgent = settings.UserAgent,

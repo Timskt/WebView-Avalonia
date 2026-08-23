@@ -97,7 +97,7 @@ def windows_toolchain(line: str) -> Tuple[Dict[str, object], List[str]]:
     required_name = "Visual Studio 2019" if line == "106" else "Visual Studio 2022"
     vswhere_common = [
         str(vswhere), "-latest", "-products", "*", "-version", version_range,
-        "-requires", "Microsoft.VisualStudio.Workload.NativeDesktop",
+        "-requires", "Microsoft.VisualStudio.Component.VC.Tools.x86.x64",
         "Microsoft.VisualStudio.Component.VC.ATLMFC",
     ]
     if vswhere.is_file():

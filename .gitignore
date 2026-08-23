@@ -1,6 +1,7 @@
 .dotnet-home/
 local-nuget/
 artifacts/
+dist/
 
 WebView/nuget/
 WebView/packages/
@@ -12,6 +13,7 @@ vendor/CefGlue*/Nuget/output/
 vendor/CefGlue*/NuGet/output/
 
 *.nupkg
+*.bak
 scripts/**/__pycache__/
 **/.DS_Store
 # Persistent Docker/Compose Chromium workspaces (often hundreds of GiB)

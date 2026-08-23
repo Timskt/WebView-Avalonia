@@ -153,6 +153,30 @@ return true;
     <Copy SourceFiles="@(CefGlueBrowserProcessFiles);@(_CefBrowserProcessSourceFiles)" DestinationFolder="$(_CefBrowserProcessDir)" SkipUnchangedFiles="true" Condition="'@(CefGlueBrowserProcessFiles)' != '' Or '@(_CefBrowserProcessSourceFiles)' != ''" />
   </Target>
 
+  <Target Name="_NormalizeCefWindowsOutputResources"
+          AfterTargets="CopyFilesToOutputDirectory"
+          Condition="$([MSBuild]::IsOSPlatform('Windows')) And ('$(RuntimeIdentifier)' == 'win-x64' Or '$(RuntimeIdentifier)' == 'win-arm64' Or '$(CefGlueTargetPlatform)' == 'win-x64' Or '$(CefGlueTargetPlatform)' == 'win-arm64')">
+    <ItemGroup>
+      <_CefRootLocaleFiles Include="$(OutDir)*.pak" />
+      <_CefRootLocaleFiles Remove="$(OutDir)chrome_100_percent.pak;$(OutDir)chrome_200_percent.pak;$(OutDir)headless_command_resources.pak;$(OutDir)resources.pak" />
+    </ItemGroup>
+    <MakeDir Directories="$(OutDir)locales" Condition="'@(_CefRootLocaleFiles)' != ''" />
+    <Copy SourceFiles="@(_CefRootLocaleFiles)" DestinationFiles="@(_CefRootLocaleFiles->'$(OutDir)locales\%(Filename)%(Extension)')" SkipUnchangedFiles="true" Condition="'@(_CefRootLocaleFiles)' != ''" />
+    <Delete Files="@(_CefRootLocaleFiles)" Condition="'@(_CefRootLocaleFiles)' != ''" />
+  </Target>
+
+  <Target Name="_NormalizeCefWindowsPublishResources"
+          AfterTargets="Publish"
+          Condition="$([MSBuild]::IsOSPlatform('Windows')) And ('$(RuntimeIdentifier)' == 'win-x64' Or '$(RuntimeIdentifier)' == 'win-arm64' Or '$(CefGlueTargetPlatform)' == 'win-x64' Or '$(CefGlueTargetPlatform)' == 'win-arm64') And '$(PublishDir)' != ''">
+    <ItemGroup>
+      <_CefRootPublishLocaleFiles Include="$(PublishDir)*.pak" />
+      <_CefRootPublishLocaleFiles Remove="$(PublishDir)chrome_100_percent.pak;$(PublishDir)chrome_200_percent.pak;$(PublishDir)headless_command_resources.pak;$(PublishDir)resources.pak" />
+    </ItemGroup>
+    <MakeDir Directories="$(PublishDir)locales" Condition="'@(_CefRootPublishLocaleFiles)' != ''" />
+    <Copy SourceFiles="@(_CefRootPublishLocaleFiles)" DestinationFiles="@(_CefRootPublishLocaleFiles->'$(PublishDir)locales\%(Filename)%(Extension)')" SkipUnchangedFiles="true" Condition="'@(_CefRootPublishLocaleFiles)' != ''" />
+    <Delete Files="@(_CefRootPublishLocaleFiles)" Condition="'@(_CefRootPublishLocaleFiles)' != ''" />
+  </Target>
+
   <Target Name="_Ensure9n1mBrowserProcessExecutable"
           AfterTargets="CopyFilesToOutputDirectory"
           Condition="!$([MSBuild]::IsOSPlatform('Windows')) And ('$(RuntimeIdentifier)' == 'osx-x64' Or '$(RuntimeIdentifier)' == 'osx-arm64' Or '$(RuntimeIdentifier)' == 'linux-x64' Or '$(RuntimeIdentifier)' == 'linux-arm64' Or ('$(RuntimeIdentifier)' == '' And ('$(CefGlueTargetPlatform)' == 'osx-x64' Or '$(CefGlueTargetPlatform)' == 'osx-arm64' Or '$(CefGlueTargetPlatform)' == 'linux-x64' Or '$(CefGlueTargetPlatform)' == 'linux-arm64'))) And Exists('$(OutDir)CefGlueBrowserProcess/9n1m.webview')">
