@@ -1,6 +1,8 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+export PATH="/usr/bin:/mingw64/bin:${PATH}"
+
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 source "${SCRIPT_DIR}/lib/common.sh"
 resolve_python
@@ -92,7 +94,9 @@ arch="${rid##*-}"
 cache_root="${cache_root:-$REPO_ROOT/.cef-cache/portable/$line/$rid}"
 output_root="${output_root:-$REPO_ROOT/artifacts/portable}"
 mkdir -p "$cache_root" "$output_root"
-cache_root="$(cd "$cache_root" && pwd)"
+if [[ "$host_platform" != Windows || "$cache_root" != /[a-zA-Z]/* ]]; then
+  cache_root="$(cd "$cache_root" && pwd)"
+fi
 output_root="$(cd "$output_root" && pwd)"
 line_output="$output_root/cef-$line/$rid"
 feed="$line_output/nuget"
@@ -102,6 +106,7 @@ source_root="$cache_root/source"
 depot_tools="$cache_root/depot_tools"
 nuget_cache="$cache_root/nuget-cache"
 mkdir -p "$line_output" "$feed" "$nuget_cache"
+export NUGET_PACKAGES="$nuget_cache"
 
 preflight_args=(
   --line "$line"
@@ -139,6 +144,27 @@ if [[ "$skip_native" != true ]]; then
       https://chromium.googlesource.com/chromium/tools/depot_tools.git \
       "$depot_tools"
   fi
+
+  # A fresh depot_tools checkout contains the batch entry points but not the
+  # generated git/python wrappers. Those are normally created by
+  # update_depot_tools.bat; this build intentionally disables auto-update, so
+  # bootstrap them explicitly on the first run after migration.
+  if [[ "$host_platform" == Windows && ( ! -f "$depot_tools/git.bat" || ! -f "$depot_tools/python3.bat" ) ]]; then
+    echo "Bootstrapping depot_tools Windows wrappers: $depot_tools"
+    bootstrap_script="$SCRIPT_DIR/bootstrap-depot-tools.ps1"
+    depot_tools_native="$depot_tools"
+    if command -v cygpath >/dev/null 2>&1; then
+      bootstrap_script="$(cygpath -w "$bootstrap_script")"
+      depot_tools_native="$(cygpath -w "$depot_tools")"
+    fi
+    MSYS2_ARG_CONV_EXCL='*' powershell.exe -NoProfile -ExecutionPolicy Bypass \
+      -File "$bootstrap_script" -DepotTools "$depot_tools_native"
+  fi
+
+  [[ -f "$depot_tools/git.bat" && -f "$depot_tools/python3.bat" ]] || {
+    echo "depot_tools is incomplete: git.bat/python3.bat were not generated" >&2
+    exit 1
+  }
   export PATH="$depot_tools:$PATH"
   export DEPOT_TOOLS_DIR="$depot_tools"
   export CEF_SOURCE_DIR="$source_root"
@@ -163,8 +189,21 @@ fi
 "${PYTHON_BIN}" "$SCRIPT_DIR/package-cef-runtime.py" \
   --line "$line" --rid "$rid" --source "$binary_distrib" \
   --version "$CEF_RUNTIME_VERSION" --output "$feed" --codec-enabled
-runtime_package="$(find "$feed" -maxdepth 1 -name "*.$CEF_RUNTIME_VERSION.nupkg" -print -quit)"
+case "$rid" in
+  win-x64) runtime_package_id=chromiumembeddedframework.runtime.win-x64 ;;
+  win-arm64) runtime_package_id=chromiumembeddedframework.runtime.win-arm64 ;;
+  osx-x64) runtime_package_id=cef.redist.osx64 ;;
+  osx-arm64) runtime_package_id=cef.redist.osx.arm64 ;;
+  linux-x64) runtime_package_id=cef.redist.linux64 ;;
+  linux-arm64) runtime_package_id=cef.redist.linuxarm64 ;;
+esac
+runtime_package="$feed/$runtime_package_id.$CEF_RUNTIME_VERSION.nupkg"
 [[ -n "$runtime_package" ]] || { echo "Runtime NuGet was not produced" >&2; exit 1; }
+[[ -f "$runtime_package" ]] || { echo "Runtime NuGet was not produced: $runtime_package" >&2; exit 1; }
+if [[ "$rid" == win-* ]]; then
+  meta_package="$feed/chromiumembeddedframework.runtime.$CEF_RUNTIME_VERSION.nupkg"
+  [[ -f "$meta_package" ]] || { echo "Windows runtime meta NuGet was not produced: $meta_package" >&2; exit 1; }
+fi
 "${PYTHON_BIN}" "$SCRIPT_DIR/verify-package-layout.py" "$runtime_package" \
   --kind runtime --line "$line" --rid "$rid"
 

@@ -17,6 +17,7 @@ esac
 
 rm -rf "$work"
 mkdir -p "$work/feed" "$work/fixtures" "$work/consumer"
+export NUGET_PACKAGES="$work/nuget-cache"
 work="$(cd "$work" && pwd)"
 feed="$work/feed"
 

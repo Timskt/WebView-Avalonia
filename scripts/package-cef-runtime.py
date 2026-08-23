@@ -130,6 +130,53 @@ def locate_license(distribution_root: Path, source_root: Path) -> Optional[Path]
     return find_upwards(distribution_root, "LICENSE.txt", source_root)
 
 
+def create_windows_meta_package(output: Path, version: str, license_file: Optional[Path]) -> Path:
+    dependencies = []
+    for rid in ("win-x64", "win-arm64"):
+        package_id = RUNTIME_IDS[rid]
+        if (output / f"{package_id}.{version}.nupkg").is_file():
+            dependencies.append(package_id)
+    if not dependencies:
+        raise SystemExit("Cannot create Windows CEF runtime meta package without a RID package")
+
+    package_id = "chromiumembeddedframework.runtime"
+    with tempfile.TemporaryDirectory(prefix="cef-windows-runtime-meta-") as temp:
+        stage = Path(temp)
+        if license_file:
+            shutil.copy2(license_file, stage / "LICENSE.txt")
+        else:
+            (stage / "LICENSE.txt").write_text(
+                "CEF license information is supplied by the CEF binary distribution.\n",
+                encoding="utf-8",
+            )
+        dependency_xml = "\n".join(
+            f'      <dependency id="{dependency}" version="[{escape(version)}]" />'
+            for dependency in dependencies
+        )
+        nuspec = f'''<?xml version="1.0" encoding="utf-8"?>
+<package xmlns="http://schemas.microsoft.com/packaging/2013/05/nuspec.xsd">
+  <metadata>
+    <id>{package_id}</id><version>{escape(version)}</version><authors>9n1m</authors><owners>9n1m</owners>
+    <requireLicenseAcceptance>false</requireLicenseAcceptance><license type="file">LICENSE.txt</license>
+    <description>Codec-enabled CEF Windows runtime meta package.</description>
+    <tags>cef chromium native runtime windows h264 h265 hevc</tags>
+    <dependencies>
+{dependency_xml}
+    </dependencies>
+  </metadata>
+</package>
+'''
+        (stage / f"{package_id}.nuspec").write_text(nuspec, encoding="utf-8")
+        package_path = output / f"{package_id}.{version}.nupkg"
+        package_path.unlink(missing_ok=True)
+        with zipfile.ZipFile(package_path, "w", zipfile.ZIP_DEFLATED, compresslevel=6) as archive:
+            for path in sorted(stage.rglob("*")):
+                if path.is_file():
+                    archive.write(path, path.relative_to(stage).as_posix())
+    print(package_path)
+    return package_path
+
+
 def create_package(args: argparse.Namespace) -> Path:
     config = load_cef_line(args.line)
     source_root = args.source.resolve()
@@ -164,6 +211,8 @@ def create_package(args: argparse.Namespace) -> Path:
                 if path.is_file():
                     archive.write(path, path.relative_to(stage).as_posix())
     print(package_path)
+    if args.rid.startswith("win-"):
+        create_windows_meta_package(args.output, args.version, license_file)
     return package_path
 
 
