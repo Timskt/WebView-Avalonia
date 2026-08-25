@@ -5,8 +5,8 @@
     "cef_checkout": "e1054005e45a4b2e18e80edd6813dcc4c018d9c9",
     "chromium_checkout": "106.0.5249.91",
     "cef_runtime_version": "106.0.26-codecs.1",
-    "cefglue_version": "106.5249.19-9n1m.1",
-    "webview_version": "3.120.11-cef106-codecs.1",
+    "cefglue_version": "106.5249.19-9n1m.2",
+    "webview_version": "3.120.11-cef106-codecs.2",
     "cefglue_source": "OutSystems/CefGlue@393f0fb4f218e1a0f15e79055eb86ab4193a79a2",
     "api_version": "experimental",
     "api_hashes": {
@@ -31,8 +31,8 @@
     "cef_checkout": "5dc6f2f29c7466f6e9ab9773e36de4b28e59c1f3",
     "chromium_checkout": "134.0.6998.178",
     "cef_runtime_version": "134.3.9-codecs.1",
-    "cefglue_version": "134.6998.178-9n1m.1",
-    "webview_version": "3.134.178-codecs.1",
+    "cefglue_version": "134.6998.178-9n1m.9",
+    "webview_version": "3.134.178-codecs.9",
     "cefglue_source": "OutSystems/CefGlue@2e308b350e2c1955dd35a0a3a5d7383cdcf76649",
     "api_version": "13401",
     "api_hashes": {

@@ -48,6 +48,23 @@ namespace WebViewControl {
             }).ToArray();
 
             settings.AddCommandLineSwitch("enable-experimental-web-platform-features", null);
+
+            if (settings.EnableMediaStream) {
+                settings.AddCommandLineSwitch("enable-media-stream", null);
+            }
+
+            if (!settings.EnableGpuAcceleration) {
+                settings.AddCommandLineSwitch("disable-gpu", null);
+                settings.AddCommandLineSwitch("disable-gpu-compositing", null);
+            }
+
+            if (!settings.EnableHardwareVideoDecoding) {
+                settings.AddCommandLineSwitch("disable-accelerated-video-decode", null);
+            }
+
+            if (!settings.EnableHardwareVideoEncoding) {
+                settings.AddCommandLineSwitch("disable-accelerated-video-encode", null);
+            }
             
             if (settings.EnableVideoAutoplay) {
                 settings.AddCommandLineSwitch("autoplay-policy", "no-user-gesture-required");

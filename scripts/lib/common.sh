@@ -12,19 +12,25 @@ resolve_python() {
       echo "Configured PYTHON_BIN was not found: ${PYTHON_BIN}" >&2
       return 2
     fi
+    if ! "${PYTHON_BIN}" -c 'import sys; raise SystemExit(0 if sys.version_info[0] >= 3 else 1)' >/dev/null 2>&1; then
+      echo "Configured PYTHON_BIN is not Python 3: ${PYTHON_BIN}" >&2
+      return 2
+    fi
     export PYTHON_BIN
     return 0
   fi
 
-  if command -v python3 >/dev/null 2>&1; then
-    PYTHON_BIN=python3
-  elif command -v python >/dev/null 2>&1; then
-    PYTHON_BIN=python
-  else
-    echo "Python 3 is required (python3 or python)." >&2
-    return 2
-  fi
-  export PYTHON_BIN
+  local candidate
+  for candidate in python3.bat python3 python.bat python; do
+    if command -v "$candidate" >/dev/null 2>&1 && "$candidate" -c 'import sys; raise SystemExit(0 if sys.version_info[0] >= 3 else 1)' >/dev/null 2>&1; then
+      PYTHON_BIN="$candidate"
+      export PYTHON_BIN
+      return 0
+    fi
+  done
+
+  echo "Python 3 is required (python3.bat, python3, python.bat, or python)." >&2
+  return 2
 }
 
 native_path() {

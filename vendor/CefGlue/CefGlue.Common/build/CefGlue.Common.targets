@@ -63,10 +63,12 @@
         </ItemGroup>
     </Target>
 
-    <!-- Copy CEF resources from chromiumembeddedframework.runtime.<architecture> on Windows. -->
-    <Target Name="ResolveCEFAssets" Condition="$([MSBuild]::IsOSPlatform('Windows')) and '$(CefGlueTargetPlatform)' != ''" AfterTargets="ResolvePackageAssets">
+    <!-- Copy CEF resources and locales to the locations expected by CEF. -->
+    <Target Name="ResolveCEFAssets" Condition="$([MSBuild]::IsOSPlatform('Windows')) and '$(CefGlueTargetPlatform)' != ''" AfterTargets="ResolveLockFileCopyLocalFiles" BeforeTargets="AssignTargetPaths">
         <ItemGroup Condition="'$(CefGlueTargetPlatform)' == 'win-x64' OR '$(CefGlueTargetPlatform)' == 'win-arm64'">
             <CefRuntimeFiles Include="@(RuntimeTargetsCopyLocalItems->WithMetadataValue('NuGetPackageId', 'chromiumembeddedframework.runtime.$(CefGlueTargetPlatform)'))" />
+            <CefRuntimeFiles Remove="@(CefRuntimeFiles)"
+                             Condition="$([System.String]::Copy('%(FullPath)').Contains('\Resources\locales\'))" />
             <None Include="@(CefRuntimeFiles)">
                 <Visible>false</Visible>
                 <Link>$(OutputDirectory)%(FileName)%(Extension)</Link>
@@ -74,6 +76,31 @@
                 <CopyToPublishDirectory>PreserveNewest</CopyToPublishDirectory>
                 <PublishState>Included</PublishState>
             </None>
+        </ItemGroup>
+        <ItemGroup>
+            <CefRuntimeLocales Include="@(ReferenceCopyLocalPaths->WithMetadataValue('NuGetPackageId', 'chromiumembeddedframework.runtime.win-x64'))"
+                               Condition="'$(CefGlueTargetPlatform)' == 'win-x64' and $([System.String]::Copy('%(FullPath)').Contains('\Resources\locales\'))" />
+            <CefRuntimeLocales Include="@(ReferenceCopyLocalPaths->WithMetadataValue('NuGetPackageId', 'chromiumembeddedframework.runtime.win-arm64'))"
+                               Condition="'$(CefGlueTargetPlatform)' == 'win-arm64' and $([System.String]::Copy('%(FullPath)').Contains('\Resources\locales\'))" />
+            <ReferenceCopyLocalPaths Remove="@(CefRuntimeLocales)" />
+            <None Include="@(CefRuntimeLocales)">
+                <Visible>false</Visible>
+                <Link>$(OutputDirectory)locales\%(FileName)%(Extension)</Link>
+                <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+                <CopyToPublishDirectory>PreserveNewest</CopyToPublishDirectory>
+                <PublishState>Included</PublishState>
+            </None>
+        </ItemGroup>
+    </Target>
+
+    <Target Name="RemoveCEFLocaleRootPublishAssets"
+            Condition="$([MSBuild]::IsOSPlatform('Windows')) and ('$(CefGlueTargetPlatform)' == 'win-x64' or '$(CefGlueTargetPlatform)' == 'win-arm64')"
+            AfterTargets="_ComputeResolvedCopyLocalPublishAssets"
+            BeforeTargets="ComputeFilesToPublish">
+        <ItemGroup>
+            <_CefLocaleRootPublishAssets Include="@(_ResolvedCopyLocalPublishAssets)"
+                Condition="('%(_ResolvedCopyLocalPublishAssets.NuGetPackageId)' == 'chromiumembeddedframework.runtime.win-x64' or '%(_ResolvedCopyLocalPublishAssets.NuGetPackageId)' == 'chromiumembeddedframework.runtime.win-arm64') and $([System.String]::Copy('%(_ResolvedCopyLocalPublishAssets.FullPath)').Contains('\Resources\locales\'))" />
+            <_ResolvedCopyLocalPublishAssets Remove="@(_CefLocaleRootPublishAssets)" />
         </ItemGroup>
     </Target>
 

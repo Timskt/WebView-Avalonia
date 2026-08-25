@@ -147,8 +147,16 @@ def verify_consumer_output(output: Path, rid: str) -> None:
     if (output / "CefGlueBrowserProcess" / ("Xilium.CefGlue.BrowserProcess.exe" if rid.startswith("win-") else "Xilium.CefGlue.BrowserProcess")).exists():
         fail(output, "old subprocess executable remains")
     native_candidates = [output / NATIVE_LIBRARY[rid], output / "CefGlueBrowserProcess" / NATIVE_LIBRARY[rid]]
-    if not any(path.is_file() for path in native_candidates) or not any(path.is_file() for path in output.rglob("*.pak")):
-        fail(output, "missing CEF native library or .pak resources")
+    if not any(path.is_file() for path in native_candidates):
+        fail(output, "missing CEF native library")
+    if not any(path.is_file() for path in output.glob("*.pak")):
+        fail(output, "missing CEF root .pak resources")
+    if rid.startswith("win-"):
+        locales = output / "locales"
+        if not locales.is_dir() or not any(path.is_file() for path in locales.glob("*.pak")):
+            fail(output, "missing CEF locale .pak resources under locales/")
+        if any(path.name in {"en-US.pak", "zh-CN.pak"} for path in output.glob("*.pak")):
+            fail(output, "CEF locale .pak files are incorrectly flattened into the output root")
     if rid == "osx-arm64":
         ime = output / "libFixIME.dylib"
         if not ime.is_file():
