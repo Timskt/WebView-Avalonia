@@ -12,6 +12,7 @@ namespace WebViewControl {
         private bool persistCache;
         private bool enableErrorLogOnly;
         private bool enableVideoAutoplay = false; 
+        private bool enableMediaStream = true;
         private bool osrEnabled = false;
         private string userAgent;
         private string logFile;
@@ -104,6 +105,19 @@ namespace WebViewControl {
             set {
                 EnsureNotLoaded(nameof(EnableVideoAutoplay));
                 enableVideoAutoplay = value;
+            }
+        }
+
+        /// <summary>
+        /// Set to true to automatically grant camera and microphone permissions
+        /// requested through getUserMedia. Default is true for compatibility with
+        /// earlier WebViewControl releases.
+        /// </summary>
+        public bool EnableMediaStream {
+            get => enableMediaStream;
+            set {
+                EnsureNotLoaded(nameof(EnableMediaStream));
+                enableMediaStream = value;
             }
         }
 

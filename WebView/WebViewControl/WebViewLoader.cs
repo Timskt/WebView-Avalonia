@@ -48,6 +48,10 @@ namespace WebViewControl {
             }).ToArray();
 
             settings.AddCommandLineSwitch("enable-experimental-web-platform-features", null);
+
+            if (settings.EnableMediaStream) {
+                settings.AddCommandLineSwitch("enable-media-stream", null);
+            }
             
             if (settings.EnableVideoAutoplay) {
                 settings.AddCommandLineSwitch("autoplay-policy", "no-user-gesture-required");

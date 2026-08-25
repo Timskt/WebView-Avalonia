@@ -9,8 +9,8 @@
 
   <PropertyGroup Condition="'$(CefLine)' == '134'">
     <TargetDotnetVersion>net8.0</TargetDotnetVersion>
-    <CefGlueVersion>134.6998.178-9n1m.1</CefGlueVersion>
-    <Version>3.134.178-codecs.1</Version>
+    <CefGlueVersion>134.6998.178-9n1m.8</CefGlueVersion>
+    <Version>3.134.178-codecs.8</Version>
     <Cef134>true</Cef134>
   </PropertyGroup>
 
