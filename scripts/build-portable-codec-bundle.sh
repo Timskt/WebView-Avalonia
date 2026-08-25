@@ -208,17 +208,15 @@ fi
   --kind runtime --line "$line" --rid "$rid"
 
 nuget_config="$line_output/NuGet.Codecs.Config"
-nuget_feed_path="$(native_path "$feed")"
-nuget_cache_path="$(native_path "$nuget_cache")"
 cat > "$nuget_config" <<EOF_CONFIG
 <?xml version="1.0" encoding="utf-8"?>
 <configuration>
   <config>
-    <add key="globalPackagesFolder" value="$nuget_cache_path" />
+    <add key="globalPackagesFolder" value=".nuget-cache" />
   </config>
   <packageSources>
     <clear />
-    <add key="codec-feed" value="$nuget_feed_path" />
+    <add key="codec-feed" value="nuget" />
     <add key="nuget.org" value="https://api.nuget.org/v3/index.json" />
   </packageSources>
 </configuration>

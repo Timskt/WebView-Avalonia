@@ -17,8 +17,8 @@
 | CefGlue checkout | `OutSystems/CefGlue@393f0fb4f218e1a0f15e79055eb86ab4193a79a2` |
 | CEF API version | `experimental` |
 | CEF runtime | `106.0.26-codecs.1` |
-| CefGlue | `106.5249.19-9n1m.1` |
-| WebView | `3.120.11-cef106-codecs.1` |
+| CefGlue | `106.5249.19-9n1m.2` |
+| WebView | `3.120.11-cef106-codecs.2` |
 | WebView TFM | `net6.0` |
 
 API hashes：
