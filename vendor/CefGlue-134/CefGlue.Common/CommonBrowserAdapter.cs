@@ -338,6 +338,7 @@ namespace Xilium.CefGlue.Common
         protected virtual void SetupBrowserView(CefWindowInfo windowInfo, int width, int height, IntPtr hostViewHandle)
         {
             windowInfo.StyleEx |= WindowStyleEx.WS_EX_NOACTIVATE; // disable window activation (prevent stealing focus)
+            windowInfo.RuntimeStyle = CefRuntimeStyle.Alloy;
             windowInfo.SetAsChild(hostViewHandle, new CefRectangle(0, 0, width, height));
         }
 
