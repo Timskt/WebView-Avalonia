@@ -41,5 +41,6 @@ namespace Xilium.CefGlue.Common
         DisplayHandler DisplayHandler { get; set; }
         RenderHandler RenderHandler { get; set; }
         JSDialogHandler JSDialogHandler { get; set; }
+        Xilium.CefGlue.CefPermissionHandler PermissionHandler { get; set; }
     }
 }

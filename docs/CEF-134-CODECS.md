@@ -19,8 +19,8 @@ dotnet build WebView/WebViewControl.Avalonia/WebViewControl.Avalonia.csproj \
 | CefGlue checkout | `OutSystems/CefGlue@2e308b350e2c1955dd35a0a3a5d7383cdcf76649` |
 | CEF API version | `13401` |
 | CEF runtime | `134.3.9-codecs.1` |
-| CefGlue | `134.6998.178-9n1m.9` |
-| WebView | `3.134.178-codecs.9` |
+| CefGlue | `134.6998.178-9n1m.10` |
+| WebView | `3.134.178-codecs.10` |
 | WebView TFM | `net8.0` |
 
 平台 API hashes：

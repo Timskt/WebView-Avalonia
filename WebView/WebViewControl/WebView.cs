@@ -136,6 +136,7 @@ namespace WebViewControl {
             chromium.DialogHandler = new InternalDialogHandler(this);
             chromium.DownloadHandler = new InternalDownloadHandler(this);
             chromium.JSDialogHandler = new InternalJsDialogHandler(this);
+            chromium.PermissionHandler = new InternalPermissionHandler(Settings);
             chromium.DragHandler = new InternalDragHandler(this);
             chromium.KeyboardHandler = new InternalKeyboardHandler(this);
 

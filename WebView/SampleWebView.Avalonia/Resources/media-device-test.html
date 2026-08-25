@@ -1,0 +1,112 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>CEF media device test</title>
+  <style>
+    :root { color-scheme: dark; font-family: Segoe UI, sans-serif; }
+    body { margin: 0; padding: 18px; background: #202124; color: #f1f3f4; }
+    h1 { margin: 0 0 8px; font-size: 22px; }
+    p { color: #bdc1c6; }
+    button { margin: 4px; padding: 8px 12px; border: 0; border-radius: 4px; cursor: pointer; }
+    button:hover { background: #b9d7ff; }
+    .row { display: flex; flex-wrap: wrap; gap: 12px; }
+    .panel { margin-top: 14px; padding: 12px; background: #303134; border-radius: 6px; }
+    video { width: min(480px, 100%); max-height: 300px; background: #000; margin: 6px 6px 0 0; }
+    pre { white-space: pre-wrap; word-break: break-word; margin: 0; color: #d7f5d1; }
+    .ok { color: #81c995; }
+    .error { color: #f28b82; }
+  </style>
+</head>
+<body>
+  <h1>CEF 麦克风、摄像头、桌面捕捉测试</h1>
+  <p>先枚举设备；首次获取设备流后，Chromium 才会显示设备名称。桌面捕捉必须点击按钮触发。</p>
+  <div class="row">
+    <button id="enumerate">刷新设备列表</button>
+    <button id="microphone">获取麦克风</button>
+    <button id="camera">获取摄像头</button>
+    <button id="desktop">获取桌面捕捉（视频+系统音频）</button>
+    <button id="stop">停止全部流</button>
+  </div>
+  <div class="panel"><pre id="status">正在初始化...</pre></div>
+  <div class="panel">
+    <strong>视频预览</strong><br>
+    <video id="cameraPreview" autoplay muted playsinline></video>
+    <video id="desktopPreview" autoplay muted playsinline></video>
+  </div>
+  <div class="panel"><strong>设备列表</strong><pre id="devices">尚未枚举</pre></div>
+  <script>
+    (() => {
+      const status = document.getElementById('status');
+      const devicesOutput = document.getElementById('devices');
+      const cameraPreview = document.getElementById('cameraPreview');
+      const desktopPreview = document.getElementById('desktopPreview');
+      const streams = new Set();
+
+      function write(message, error = false) {
+        const line = document.createElement('div');
+        line.textContent = `[${new Date().toLocaleTimeString()}] ${message}`;
+        line.className = error ? 'error' : 'ok';
+        status.appendChild(line);
+      }
+
+      function describeError(error) {
+        return `${error.name || 'Error'}: ${error.message || '(no message)'}`;
+      }
+
+      async function enumerateDevices() {
+        try {
+          const devices = await navigator.mediaDevices.enumerateDevices();
+          devicesOutput.textContent = JSON.stringify(devices.map(device => ({
+            kind: device.kind, label: device.label, deviceId: device.deviceId, groupId: device.groupId
+          })), null, 2);
+          write(`enumerateDevices 成功，共 ${devices.length} 个设备`);
+        } catch (error) {
+          write(`enumerateDevices 失败：${describeError(error)}`, true);
+        }
+      }
+
+      async function getUserMedia(constraints, preview, label) {
+        try {
+          const stream = await navigator.mediaDevices.getUserMedia(constraints);
+          streams.add(stream);
+          if (preview) preview.srcObject = stream;
+          write(`${label} 成功：${stream.getTracks().map(track => `${track.kind}/${track.readyState}`).join(', ')}`);
+          await enumerateDevices();
+        } catch (error) {
+          write(`${label} 失败：${describeError(error)}`, true);
+        }
+      }
+
+      async function getDesktopMedia() {
+        try {
+          const stream = await navigator.mediaDevices.getDisplayMedia({ video: true, audio: true });
+          streams.add(stream);
+          desktopPreview.srcObject = stream;
+          write(`桌面捕捉成功：${stream.getTracks().map(track => `${track.kind}/${track.readyState}`).join(', ')}`);
+        } catch (error) {
+          write(`桌面捕捉失败：${describeError(error)}`, true);
+        }
+      }
+
+      function stopAll() {
+        for (const stream of streams) stream.getTracks().forEach(track => track.stop());
+        streams.clear();
+        cameraPreview.srcObject = null;
+        desktopPreview.srcObject = null;
+        write('已停止全部媒体流');
+      }
+
+      document.getElementById('enumerate').onclick = enumerateDevices;
+      document.getElementById('microphone').onclick = () => getUserMedia({ audio: true }, null, '麦克风');
+      document.getElementById('camera').onclick = () => getUserMedia({ video: true }, cameraPreview, '摄像头');
+      document.getElementById('desktop').onclick = getDesktopMedia;
+      document.getElementById('stop').onclick = stopAll;
+
+      if (!navigator.mediaDevices) write('当前页面没有 navigator.mediaDevices', true);
+      else { write('navigator.mediaDevices 可用'); enumerateDevices(); }
+    })();
+  </script>
+</body>
+</html>

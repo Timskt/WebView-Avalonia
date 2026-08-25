@@ -13,6 +13,8 @@ namespace WebViewControl {
         private bool enableErrorLogOnly;
         private bool enableVideoAutoplay = false; 
         private bool enableMediaStream = true;
+        private bool enableDesktopCapture = true;
+        private string desktopCaptureSource;
         private bool enableGpuAcceleration = true;
         private bool enableHardwareVideoDecoding = true;
         private bool enableHardwareVideoEncoding = true;
@@ -121,6 +123,30 @@ namespace WebViewControl {
             set {
                 EnsureNotLoaded(nameof(EnableMediaStream));
                 enableMediaStream = value;
+            }
+        }
+
+        /// <summary>
+        /// Set to true to automatically grant desktop video and audio capture
+        /// permissions requested through getDisplayMedia. Default is true.
+        /// </summary>
+        public bool EnableDesktopCapture {
+            get => enableDesktopCapture;
+            set {
+                EnsureNotLoaded(nameof(EnableDesktopCapture));
+                enableDesktopCapture = value;
+            }
+        }
+
+        /// <summary>
+        /// Desktop capture source name used by Chromium for automatic source
+        /// selection. Set to null or empty to show the normal source picker.
+        /// </summary>
+        public string DesktopCaptureSource {
+            get => desktopCaptureSource;
+            set {
+                EnsureNotLoaded(nameof(DesktopCaptureSource));
+                desktopCaptureSource = value;
             }
         }
 
