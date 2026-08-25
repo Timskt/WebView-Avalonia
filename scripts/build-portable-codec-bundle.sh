@@ -241,6 +241,12 @@ if [[ "$build_demo" == true ]]; then
   "${PYTHON_BIN}" "$SCRIPT_DIR/verify-package-layout.py" "$demo_output" \
     --kind consumer --line "$line" --rid "$rid"
   tar -C "$demo_output" -czf "$line_output/html5test-demo-$rid.tar.gz" .
+  if [[ "$rid" == win-* ]]; then
+    "${PYTHON_BIN}" "$SCRIPT_DIR/create-portable-windows-demo.py" \
+      --source "$demo_output" \
+      --output "$line_output/SampleWebView-Avalonia-portable-$rid.zip" \
+      --line "$line" --rid "$rid"
+  fi
 fi
 
 cp "$marker" "$line_output/CEF_CODEC_BUILD_INFO.txt"
