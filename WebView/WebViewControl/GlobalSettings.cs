@@ -13,6 +13,9 @@ namespace WebViewControl {
         private bool enableErrorLogOnly;
         private bool enableVideoAutoplay = false; 
         private bool enableMediaStream = true;
+        private bool enableGpuAcceleration = true;
+        private bool enableHardwareVideoDecoding = true;
+        private bool enableHardwareVideoEncoding = true;
         private bool osrEnabled = false;
         private string userAgent;
         private string logFile;
@@ -118,6 +121,42 @@ namespace WebViewControl {
             set {
                 EnsureNotLoaded(nameof(EnableMediaStream));
                 enableMediaStream = value;
+            }
+        }
+
+        /// <summary>
+        /// Set to true to allow Chromium GPU rendering and compositing.
+        /// Default is true. Off-screen rendering disables GPU acceleration internally.
+        /// </summary>
+        public bool EnableGpuAcceleration {
+            get => enableGpuAcceleration;
+            set {
+                EnsureNotLoaded(nameof(EnableGpuAcceleration));
+                enableGpuAcceleration = value;
+            }
+        }
+
+        /// <summary>
+        /// Set to true to allow hardware video decoding when supported by the OS and GPU.
+        /// Default is true.
+        /// </summary>
+        public bool EnableHardwareVideoDecoding {
+            get => enableHardwareVideoDecoding;
+            set {
+                EnsureNotLoaded(nameof(EnableHardwareVideoDecoding));
+                enableHardwareVideoDecoding = value;
+            }
+        }
+
+        /// <summary>
+        /// Set to true to allow hardware video encoding when supported by the OS and GPU.
+        /// Default is true.
+        /// </summary>
+        public bool EnableHardwareVideoEncoding {
+            get => enableHardwareVideoEncoding;
+            set {
+                EnsureNotLoaded(nameof(EnableHardwareVideoEncoding));
+                enableHardwareVideoEncoding = value;
             }
         }
 

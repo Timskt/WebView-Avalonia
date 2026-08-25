@@ -22,3 +22,28 @@ WebView.Settings.EnableMediaStream = false;
 This switch controls browser permission only. Windows microphone privacy
 settings, device drivers, device constraints, and hardware availability can
 still cause `getUserMedia()` to fail.
+
+## Hardware acceleration
+
+Hardware acceleration is enabled by default. The settings must be assigned
+before the first WebView is created:
+
+```csharp
+WebView.Settings.EnableGpuAcceleration = true;
+WebView.Settings.EnableHardwareVideoDecoding = true;
+WebView.Settings.EnableHardwareVideoEncoding = true;
+```
+
+To disable a capability:
+
+```csharp
+WebView.Settings.EnableGpuAcceleration = false;
+WebView.Settings.EnableHardwareVideoDecoding = false;
+WebView.Settings.EnableHardwareVideoEncoding = false;
+```
+
+These options control Chromium switches only. Actual hardware use still
+depends on the operating system, GPU driver, codec profile, and CEF build.
+There is no general CEF switch for "hardware audio acceleration". Audio input
+and output use the platform audio stack; device permissions and endpoint
+availability are separate from GPU/video acceleration.

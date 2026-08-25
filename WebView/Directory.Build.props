@@ -9,8 +9,8 @@
 
   <PropertyGroup Condition="'$(CefLine)' == '134'">
     <TargetDotnetVersion>net8.0</TargetDotnetVersion>
-    <CefGlueVersion>134.6998.178-9n1m.8</CefGlueVersion>
-    <Version>3.134.178-codecs.8</Version>
+    <CefGlueVersion>134.6998.178-9n1m.9</CefGlueVersion>
+    <Version>3.134.178-codecs.9</Version>
     <Cef134>true</Cef134>
   </PropertyGroup>
 
@@ -18,7 +18,7 @@
     <TargetDotnetVersion>net6.0</TargetDotnetVersion>
     <!-- CEF 106.x is the last project line retained for Windows 7. -->
     <CefGlueVersion>106.5249.19-9n1m.1</CefGlueVersion>
-    <Version>3.120.11-cef106-codecs.1</Version>
+    <Version>3.120.11-cef106-codecs.2</Version>
     <Cef106>true</Cef106>
   </PropertyGroup>
 
