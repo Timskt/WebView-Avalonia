@@ -7,7 +7,7 @@ Configure the feed and install the top-level package:
 ```powershell
 dotnet nuget add source \\server\cef-nuget --name CompanyCef
 dotnet add package WebViewControl-Avalonia `
-  --version 3.134.178-codecs.9 `
+  --version 3.134.178-codecs.11 `
   --source CompanyCef
 ```
 
@@ -27,7 +27,7 @@ For a normal Windows x64 Avalonia application:
 
 <ItemGroup>
   <PackageReference Include="WebViewControl-Avalonia"
-                    Version="3.134.178-codecs.9" />
+                    Version="3.134.178-codecs.11" />
 </ItemGroup>
 ```
 

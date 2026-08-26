@@ -32,9 +32,9 @@ Windows x64 this includes:
 ```text
 chromiumembeddedframework.runtime.134.3.9-codecs.1.nupkg
 chromiumembeddedframework.runtime.win-x64.134.3.9-codecs.1.nupkg
-CefGlue.Common.134.6998.178-9n1m.9.nupkg
-CefGlue.Avalonia.134.6998.178-9n1m.9.nupkg
-WebViewControl-Avalonia.3.134.178-codecs.9.nupkg
+CefGlue.Common.134.6998.178-9n1m.11.nupkg
+CefGlue.Avalonia.134.6998.178-9n1m.11.nupkg
+WebViewControl-Avalonia.3.134.178-codecs.11.nupkg
 ```
 
 Consumers reference only `WebViewControl-Avalonia`; NuGet resolves the other
@@ -47,7 +47,7 @@ For a small team, put the complete `nuget` directory on an SMB share:
 ```powershell
 dotnet nuget add source \\server\cef-nuget --name CompanyCef
 dotnet add package WebViewControl-Avalonia `
-  --version 3.134.178-codecs.9 `
+  --version 3.134.178-codecs.11 `
   --source CompanyCef
 ```
 

@@ -49,8 +49,8 @@ namespace WebViewControl {
 
             settings.AddCommandLineSwitch("enable-experimental-web-platform-features", null);
 
-            if (settings.EnableMediaStream) {
-                settings.AddCommandLineSwitch("enable-media-stream", null);
+            if (settings.EnableDesktopCapture && !string.IsNullOrWhiteSpace(settings.DesktopCaptureSource)) {
+                settings.AddCommandLineSwitch("auto-select-desktop-capture-source", settings.DesktopCaptureSource);
             }
 
             if (!settings.EnableGpuAcceleration) {

@@ -59,6 +59,7 @@
     <Compile Include="..\WebViewControl\WebView.InternalDragHandler.cs" Link="WebView.InternalDragHandler.cs" />
     <Compile Include="..\WebViewControl\WebView.InternalKeyboardHandler.cs" Link="WebView.InternalKeyboardHandler.cs" />
     <Compile Include="..\WebViewControl\WebView.InternalLifeSpanHandler.cs" Link="WebView.InternalLifeSpanHandler.cs" />
+    <Compile Include="..\WebViewControl\WebView.InternalPermissionHandler.cs" Link="WebView.InternalPermissionHandler.cs" />
     <Compile Include="..\WebViewControl\WebView.InternalRequestHandler.cs" Link="WebView.InternalRequestHandler.cs" />
     <Compile Include="..\WebViewControl\WebView.InternalResourceRequestHandler.cs" Link="WebView.InternalResourceRequestHandler.cs" />
     <Compile Include="..\WebViewControl\WebView.JavascriptException.cs" Link="WebView.JavascriptException.cs" />

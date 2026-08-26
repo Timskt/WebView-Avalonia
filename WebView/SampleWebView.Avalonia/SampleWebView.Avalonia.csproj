@@ -31,6 +31,10 @@
   </ItemGroup>
 
   <ItemGroup>
+    <EmbeddedResource Include="Resources\media-device-test.html" />
+  </ItemGroup>
+
+  <ItemGroup>
     <AvaloniaResource  Include="App.xaml">
       <Generator>MSBuild:Compile</Generator>
     </AvaloniaResource >

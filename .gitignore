@@ -11,6 +11,8 @@ vendor/CefGlue*/**/obj/
 vendor/CefGlue*/packages/
 vendor/CefGlue*/Nuget/output/
 vendor/CefGlue*/NuGet/output/
+samples/**/bin/
+samples/**/obj/
 
 *.nupkg
 *.bak

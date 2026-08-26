@@ -137,6 +137,7 @@ namespace Xilium.CefGlue.Common
         public DisplayHandler DisplayHandler { get; set; }
         public RenderHandler RenderHandler { get; set; }
         public JSDialogHandler JSDialogHandler { get; set; }
+        public Xilium.CefGlue.CefPermissionHandler PermissionHandler { get; set; }
 
         #endregion
 
@@ -337,6 +338,7 @@ namespace Xilium.CefGlue.Common
         protected virtual void SetupBrowserView(CefWindowInfo windowInfo, int width, int height, IntPtr hostViewHandle)
         {
             windowInfo.StyleEx |= WindowStyleEx.WS_EX_NOACTIVATE; // disable window activation (prevent stealing focus)
+            windowInfo.RuntimeStyle = CefRuntimeStyle.Alloy;
             windowInfo.SetAsChild(hostViewHandle, new CefRectangle(0, 0, width, height));
         }
 

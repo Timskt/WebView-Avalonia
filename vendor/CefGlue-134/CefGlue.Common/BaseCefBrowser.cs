@@ -202,6 +202,8 @@ namespace Xilium.CefGlue.Common
         /// </summary>
         public JSDialogHandler JSDialogHandler { get => _adapter.JSDialogHandler; set => _adapter.JSDialogHandler = value; }
 
+        public Xilium.CefGlue.CefPermissionHandler PermissionHandler { get => _adapter.PermissionHandler; set => _adapter.PermissionHandler = value; }
+
         /// <summary>
         /// Gets or set the url.
         /// </summary>

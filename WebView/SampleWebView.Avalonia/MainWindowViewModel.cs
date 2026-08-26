@@ -15,7 +15,7 @@ namespace SampleWebView.Avalonia {
         private string codecStatus = "打开 html5test.com 后点击“Check H.264/HEVC”；该检查是浏览器能力预检，不替代真实视频播放验证。";
 
         public MainWindowViewModel(WebView webview) {
-            Address = CurrentAddress = "https://html5test.com/";
+            Address = CurrentAddress = new ResourceUrl(typeof(MainWindowViewModel).Assembly, "Resources", "media-device-test.html").ToString();
 
             webview.Navigated += (_, _) => _ = CheckCodecsAsync(webview);
 
@@ -24,6 +24,10 @@ namespace SampleWebView.Avalonia {
             });
 
             CheckCodecsCommand = ReactiveCommand.CreateFromTask(() => CheckCodecsAsync(webview));
+
+            MediaTestCommand = ReactiveCommand.Create(() => {
+                CurrentAddress = new ResourceUrl(typeof(MainWindowViewModel).Assembly, "Resources", "media-device-test.html").ToString();
+            });
 
             ShowDevToolsCommand = ReactiveCommand.Create(() => {
                 webview.ShowDeveloperTools();
@@ -112,6 +116,8 @@ namespace SampleWebView.Avalonia {
         public ReactiveCommand<Unit, Unit> NavigateCommand { get; }
 
         public ReactiveCommand<Unit, Unit> CheckCodecsCommand { get; }
+
+        public ReactiveCommand<Unit, Unit> MediaTestCommand { get; }
 
         public ReactiveCommand<Unit, Unit> ShowDevToolsCommand { get; }
 

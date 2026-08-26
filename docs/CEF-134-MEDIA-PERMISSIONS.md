@@ -1,10 +1,9 @@
 # CEF 134 media permissions
 
-CEF 134 Alloy-style browsers deny camera and microphone requests by default
-when no `CefPermissionHandler` is registered. WebViewControl keeps compatibility
-with earlier releases by adding Chromium's `--enable-media-stream` switch by
-default. This automatically grants the camera and microphone permissions
-requested by `navigator.mediaDevices.getUserMedia()`.
+CEF 134 Alloy-style browsers deny media requests by default when no
+`CefPermissionHandler` is registered. WebViewControl registers an internal
+permission handler by default and automatically grants camera, microphone,
+desktop video, and desktop audio requests.
 
 No application change is required for the default behavior:
 
@@ -19,9 +18,32 @@ global setting before the first WebView is created:
 WebView.Settings.EnableMediaStream = false;
 ```
 
-This switch controls browser permission only. Windows microphone privacy
-settings, device drivers, device constraints, and hardware availability can
-still cause `getUserMedia()` to fail.
+Desktop capture is enabled by default as well:
+
+```csharp
+WebView.Settings.EnableDesktopCapture = true;
+```
+
+To disable desktop video and system audio capture:
+
+```csharp
+WebView.Settings.EnableDesktopCapture = false;
+```
+
+`getDisplayMedia()` still needs to be called from a user gesture. The optional
+source switch can automatically choose a source whose title matches the value:
+
+```csharp
+WebView.Settings.DesktopCaptureSource = "Entire screen";
+```
+
+Set `DesktopCaptureSource` to `null` or an empty string to keep Chromium's
+normal desktop source picker. Automatic permission does not bypass Windows
+privacy policy, source availability, or user-gesture requirements.
+
+These settings control browser permission only. Windows microphone privacy
+settings, device drivers, device constraints, source availability, and
+hardware availability can still cause capture requests to fail.
 
 ## Hardware acceleration
 

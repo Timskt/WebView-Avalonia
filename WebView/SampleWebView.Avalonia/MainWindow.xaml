@@ -51,6 +51,7 @@
             <DockPanel DockPanel.Dock="Top" Margin="0 0 400 0">
                 <Button DockPanel.Dock="Right" Background="Transparent" Command="{Binding ShowDevToolsCommand}">Show DevTools</Button>
                 <Button DockPanel.Dock="Right" Background="Transparent" Command="{Binding CheckCodecsCommand}">Check H.264/HEVC</Button>
+                <Button DockPanel.Dock="Right" Background="Transparent" Command="{Binding MediaTestCommand}">Media test</Button>
                 <TextBox Background="Transparent" TabIndex="0" Text="{Binding Address}" Margin="80 0 0 0">
                     <TextBox.KeyBindings>
                         <KeyBinding Gesture="Enter" Command="{Binding NavigateCommand}" />
