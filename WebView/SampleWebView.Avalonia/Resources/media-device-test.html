@@ -3,109 +3,280 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>CEF media device test</title>
+  <title>CEF 134 Media Device Diagnostics</title>
   <style>
-    :root { color-scheme: dark; font-family: Segoe UI, sans-serif; }
-    body { margin: 0; padding: 18px; background: #202124; color: #f1f3f4; }
-    h1 { margin: 0 0 8px; font-size: 22px; }
-    p { color: #bdc1c6; }
-    button { margin: 4px; padding: 8px 12px; border: 0; border-radius: 4px; cursor: pointer; }
-    button:hover { background: #b9d7ff; }
-    .row { display: flex; flex-wrap: wrap; gap: 12px; }
-    .panel { margin-top: 14px; padding: 12px; background: #303134; border-radius: 6px; }
-    video { width: min(480px, 100%); max-height: 300px; background: #000; margin: 6px 6px 0 0; }
-    pre { white-space: pre-wrap; word-break: break-word; margin: 0; color: #d7f5d1; }
-    .ok { color: #81c995; }
-    .error { color: #f28b82; }
+    :root { color-scheme: dark; font-family: "Segoe UI", sans-serif; background: #16181d; color: #eef1f5; }
+    * { box-sizing: border-box; }
+    body { margin: 0; padding: 18px; background: #16181d; color: #eef1f5; }
+    h1 { margin: 0; font-size: 22px; }
+    h2 { margin: 0 0 10px; font-size: 15px; }
+    p { margin: 6px 0 0; color: #aeb6c2; }
+    button { min-height: 34px; margin: 0 6px 6px 0; padding: 7px 12px; border: 1px solid #556171; border-radius: 4px; background: #28303b; color: #eef1f5; cursor: pointer; }
+    button:hover { background: #354252; }
+    button:disabled { cursor: wait; opacity: .55; }
+    .toolbar { margin-top: 16px; }
+    .panel { margin-top: 14px; padding: 12px; border: 1px solid #343c48; border-radius: 6px; background: #20242b; }
+    .summary { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 8px; }
+    .metric { padding: 8px; background: #292f38; border-radius: 4px; }
+    .metric span { display: block; color: #9ca8b7; font-size: 12px; }
+    .metric strong { display: block; margin-top: 3px; font-size: 14px; overflow-wrap: anywhere; }
+    .device-list { display: grid; gap: 8px; }
+    .device { display: grid; grid-template-columns: 110px minmax(160px, 1fr) minmax(160px, 1fr) minmax(160px, 1fr); gap: 8px; padding: 8px; border: 1px solid #3a4350; border-radius: 4px; background: #292f38; }
+    .device > div { min-width: 0; }
+    .device .kind { color: #9fd3ff; }
+    .key { color: #9ca8b7; font-size: 11px; }
+    .value { margin-top: 2px; overflow-wrap: anywhere; }
+    .mono, pre { font-family: Consolas, monospace; }
+    pre { max-height: 280px; margin: 0; overflow: auto; white-space: pre-wrap; word-break: break-word; color: #d8f0d4; }
+    video { width: min(480px, 100%); max-height: 280px; margin: 4px 8px 0 0; background: #000; }
+    .ok { color: #9bd7a0; }
+    .error, .empty { color: #f2a9a1; }
+    .muted { color: #aeb6c2; }
+    @media (max-width: 800px) { body { padding: 12px; } .device { grid-template-columns: 1fr; } }
   </style>
 </head>
 <body>
-  <h1>CEF 麦克风、摄像头、桌面捕捉测试</h1>
-  <p>先枚举设备；首次获取设备流后，Chromium 才会显示设备名称。桌面捕捉必须点击按钮触发。</p>
-  <div class="row">
-    <button id="enumerate">刷新设备列表</button>
-    <button id="microphone">获取麦克风</button>
-    <button id="camera">获取摄像头</button>
-    <button id="desktop">获取桌面捕捉（视频+系统音频）</button>
-    <button id="stop">停止全部流</button>
+  <h1>CEF 134 Media Device Diagnostics</h1>
+  <p>WebViewControl-Avalonia device enumeration and media stream test.</p>
+
+  <div class="toolbar">
+    <button id="enumerate">Refresh devices</button>
+    <button id="microphone">Test microphone</button>
+    <button id="camera">Test camera</button>
+    <button id="desktop">Test desktop capture</button>
+    <button id="stop">Stop streams</button>
+    <button id="clear">Clear log</button>
   </div>
-  <div class="panel"><pre id="status">正在初始化...</pre></div>
-  <div class="panel">
-    <strong>视频预览</strong><br>
+
+  <section class="panel"><h2>Status</h2><div id="summary" class="summary"></div></section>
+  <section class="panel"><h2>Devices</h2><div id="devices" class="device-list"><div class="muted">Not enumerated</div></div></section>
+  <section class="panel">
+    <h2>Preview</h2>
     <video id="cameraPreview" autoplay muted playsinline></video>
     <video id="desktopPreview" autoplay muted playsinline></video>
-  </div>
-  <div class="panel"><strong>设备列表</strong><pre id="devices">尚未枚举</pre></div>
+    <div class="muted">A preview appears after camera or desktop capture succeeds.</div>
+  </section>
+  <section class="panel"><h2>Latest test</h2><pre id="result">No test result</pre></section>
+  <section class="panel"><h2>Event log</h2><pre id="status"></pre></section>
+
   <script>
     (() => {
       const status = document.getElementById('status');
+      const summary = document.getElementById('summary');
       const devicesOutput = document.getElementById('devices');
+      const resultOutput = document.getElementById('result');
       const cameraPreview = document.getElementById('cameraPreview');
       const desktopPreview = document.getElementById('desktopPreview');
       const streams = new Set();
+      const tests = {};
+      let deviceChangeCount = 0;
+      let lastDevices = [];
 
-      function write(message, error = false) {
+      function log(message, error = false) {
         const line = document.createElement('div');
         line.textContent = `[${new Date().toLocaleTimeString()}] ${message}`;
         line.className = error ? 'error' : 'ok';
         status.appendChild(line);
+        status.scrollTop = status.scrollHeight;
       }
 
-      function describeError(error) {
-        return `${error.name || 'Error'}: ${error.message || '(no message)'}`;
+      function errorText(error) {
+        return `${error && error.name || 'Error'}: ${error && error.message || '(no message)'}`;
       }
 
-      async function enumerateDevices() {
-        try {
-          const devices = await navigator.mediaDevices.enumerateDevices();
-          devicesOutput.textContent = JSON.stringify(devices.map(device => ({
-            kind: device.kind, label: device.label, deviceId: device.deviceId, groupId: device.groupId
-          })), null, 2);
-          write(`enumerateDevices 成功，共 ${devices.length} 个设备`);
-        } catch (error) {
-          write(`enumerateDevices 失败：${describeError(error)}`, true);
+      function kindText(kind) {
+        return ({ audioinput: 'audio input', audiooutput: 'audio output', videoinput: 'video input' })[kind] || kind || '(unknown)';
+      }
+
+      function valueText(value) {
+        return value || '(empty)';
+      }
+
+      function renderSummary() {
+        const counts = lastDevices.reduce((result, device) => {
+          result[device.kind] = (result[device.kind] || 0) + 1;
+          return result;
+        }, {});
+        const values = [
+          ['URL', location.href],
+          ['Secure context', window.isSecureContext ? 'yes' : 'no'],
+          ['mediaDevices', navigator.mediaDevices ? 'available' : 'unavailable'],
+          ['devicechange', `${deviceChangeCount} event(s)`],
+          ['Audio input', `${counts.audioinput || 0} device(s)`],
+          ['Audio output', `${counts.audiooutput || 0} device(s)`],
+          ['Video input', `${counts.videoinput || 0} device(s)`]
+        ];
+        summary.textContent = '';
+        for (const [key, value] of values) {
+          const item = document.createElement('div');
+          item.className = 'metric';
+          const keyNode = document.createElement('span');
+          const valueNode = document.createElement('strong');
+          keyNode.textContent = key;
+          valueNode.textContent = value;
+          item.append(keyNode, valueNode);
+          summary.appendChild(item);
         }
       }
 
-      async function getUserMedia(constraints, preview, label) {
+      function renderDevices(devices) {
+        devicesOutput.textContent = '';
+        if (!devices.length) {
+          const empty = document.createElement('div');
+          empty.className = 'muted';
+          empty.textContent = 'No devices detected';
+          devicesOutput.appendChild(empty);
+          renderSummary();
+          return;
+        }
+        for (const device of devices) {
+          const item = document.createElement('div');
+          item.className = 'device';
+          const columns = [
+            ['Kind', kindText(device.kind), 'kind'],
+            ['Label', valueText(device.label), 'label'],
+            ['deviceId', valueText(device.deviceId), 'mono'],
+            ['groupId', valueText(device.groupId), 'mono']
+          ];
+          for (const [key, value, className] of columns) {
+            const column = document.createElement('div');
+            const keyNode = document.createElement('div');
+            const valueNode = document.createElement('div');
+            keyNode.className = 'key';
+            valueNode.className = `value ${className}`;
+            keyNode.textContent = key;
+            valueNode.textContent = value;
+            if (value === '(empty)') valueNode.classList.add('empty');
+            column.append(keyNode, valueNode);
+            item.appendChild(column);
+          }
+          devicesOutput.appendChild(item);
+        }
+        renderSummary();
+      }
+
+      function snapshot() {
+        return {
+          timestamp: new Date().toISOString(),
+          url: location.href,
+          secureContext: window.isSecureContext,
+          userAgent: navigator.userAgent,
+          deviceChangeCount,
+          devices: lastDevices,
+          tests
+        };
+      }
+
+      async function report() {
         try {
+          await fetch('/result', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(snapshot()) });
+        } catch (_) {
+        }
+      }
+
+      async function enumerateDevices(reason) {
+        if (!navigator.mediaDevices || !navigator.mediaDevices.enumerateDevices) {
+          log('enumerateDevices unavailable', true);
+          return [];
+        }
+        try {
+          const devices = await navigator.mediaDevices.enumerateDevices();
+          lastDevices = devices.map(device => ({ kind: device.kind, label: device.label || '', deviceId: device.deviceId || '', groupId: device.groupId || '' }));
+          renderDevices(lastDevices);
+          log(`enumerateDevices succeeded (${reason || 'manual'}): ${devices.length} device(s)`);
+          window.__mediaDeviceDemo = snapshot();
+          await report();
+          return lastDevices;
+        } catch (error) {
+          log(`enumerateDevices failed: ${errorText(error)}`, true);
+          return [];
+        }
+      }
+
+      function showResult(result) {
+        resultOutput.textContent = JSON.stringify(result, null, 2);
+      }
+
+      async function testUserMedia(buttonId, constraints, preview, label) {
+        const button = document.getElementById(buttonId);
+        button.disabled = true;
+        try {
+          if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) throw new Error('getUserMedia unavailable');
           const stream = await navigator.mediaDevices.getUserMedia(constraints);
           streams.add(stream);
           if (preview) preview.srcObject = stream;
-          write(`${label} 成功：${stream.getTracks().map(track => `${track.kind}/${track.readyState}`).join(', ')}`);
-          await enumerateDevices();
+          const tracks = stream.getTracks().map(track => ({ kind: track.kind, label: track.label || '', readyState: track.readyState, settings: track.getSettings() }));
+          tests[buttonId] = { ok: true, type: label, constraints, tracks };
+          showResult(tests[buttonId]);
+          log(`${label} succeeded: ${tracks.map(track => `${track.kind}/${track.label || '(no label)'}`).join(', ')}`);
+          await enumerateDevices(`${label} permission`);
         } catch (error) {
-          write(`${label} 失败：${describeError(error)}`, true);
+          tests[buttonId] = { ok: false, type: label, constraints, name: error && error.name || '', message: error && error.message || '', constraint: error && error.constraint || '' };
+          showResult(tests[buttonId]);
+          log(`${label} failed: ${errorText(error)}`, true);
+          await report();
+        } finally {
+          button.disabled = false;
         }
       }
 
-      async function getDesktopMedia() {
+      function testMicrophone() {
+        return testUserMedia('microphone', { audio: { channelCount: { ideal: 1 }, sampleRate: { ideal: 16000 }, echoCancellation: true, noiseSuppression: true, autoGainControl: true }, video: false }, null, 'Microphone');
+      }
+
+      function testCamera() {
+        return testUserMedia('camera', { audio: false, video: true }, cameraPreview, 'Camera');
+      }
+
+      async function testDesktop() {
+        const button = document.getElementById('desktop');
+        button.disabled = true;
         try {
           const stream = await navigator.mediaDevices.getDisplayMedia({ video: true, audio: true });
           streams.add(stream);
           desktopPreview.srcObject = stream;
-          write(`桌面捕捉成功：${stream.getTracks().map(track => `${track.kind}/${track.readyState}`).join(', ')}`);
+          const tracks = stream.getTracks().map(track => ({ kind: track.kind, label: track.label || '', readyState: track.readyState, settings: track.getSettings() }));
+          tests.desktop = { ok: true, type: 'Desktop capture', tracks };
+          showResult(tests.desktop);
+          log(`Desktop capture succeeded: ${tracks.map(track => `${track.kind}/${track.label || '(no label)'}`).join(', ')}`);
+          await report();
         } catch (error) {
-          write(`桌面捕捉失败：${describeError(error)}`, true);
+          tests.desktop = { ok: false, type: 'Desktop capture', name: error && error.name || '', message: error && error.message || '' };
+          showResult(tests.desktop);
+          log(`Desktop capture failed: ${errorText(error)}`, true);
+          await report();
+        } finally {
+          button.disabled = false;
         }
       }
 
       function stopAll() {
-        for (const stream of streams) stream.getTracks().forEach(track => track.stop());
+        for (const stream of streams) for (const track of stream.getTracks()) track.stop();
         streams.clear();
         cameraPreview.srcObject = null;
         desktopPreview.srcObject = null;
-        write('已停止全部媒体流');
+        log('Stopped all media streams');
       }
 
-      document.getElementById('enumerate').onclick = enumerateDevices;
-      document.getElementById('microphone').onclick = () => getUserMedia({ audio: true }, null, '麦克风');
-      document.getElementById('camera').onclick = () => getUserMedia({ video: true }, cameraPreview, '摄像头');
-      document.getElementById('desktop').onclick = getDesktopMedia;
+      document.getElementById('enumerate').onclick = () => enumerateDevices('manual');
+      document.getElementById('microphone').onclick = testMicrophone;
+      document.getElementById('camera').onclick = testCamera;
+      document.getElementById('desktop').onclick = testDesktop;
       document.getElementById('stop').onclick = stopAll;
+      document.getElementById('clear').onclick = () => { status.textContent = ''; log('Log cleared'); };
 
-      if (!navigator.mediaDevices) write('当前页面没有 navigator.mediaDevices', true);
-      else { write('navigator.mediaDevices 可用'); enumerateDevices(); }
+      renderSummary();
+      if (!navigator.mediaDevices) {
+        log('navigator.mediaDevices unavailable', true);
+      } else {
+        log('navigator.mediaDevices available');
+        navigator.mediaDevices.addEventListener('devicechange', () => {
+          deviceChangeCount += 1;
+          log(`devicechange received (#${deviceChangeCount})`);
+          enumerateDevices('devicechange');
+        });
+        enumerateDevices('startup');
+      }
     })();
   </script>
 </body>

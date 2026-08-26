@@ -1,0 +1,64 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>CEF 134 media device diagnostics</title>
+  <style>
+    :root { color-scheme: dark; font-family: "Segoe UI", sans-serif; background: #16181d; color: #eef1f5; }
+    body { margin: 0; padding: 18px; background: #16181d; }
+    h1 { margin: 0; font-size: 22px; } h2 { margin: 0 0 10px; font-size: 15px; }
+    p { color: #aeb6c2; } button { margin: 0 6px 6px 0; padding: 8px 12px; border: 1px solid #556171; border-radius: 4px; background: #28303b; color: #eef1f5; cursor: pointer; }
+    button:hover { background: #354252; } button:disabled { opacity: .55; cursor: wait; }
+    .panel { margin-top: 14px; padding: 12px; border: 1px solid #343c48; border-radius: 6px; background: #20242b; }
+    .summary { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 8px; }
+    .metric { padding: 8px; background: #292f38; border-radius: 4px; } .metric span { display: block; color: #9ca8b7; font-size: 12px; } .metric strong { display: block; margin-top: 3px; overflow-wrap: anywhere; }
+    .device { display: grid; grid-template-columns: 110px minmax(150px, 1fr) minmax(150px, 1fr) minmax(150px, 1fr); gap: 8px; margin: 8px 0; padding: 8px; border: 1px solid #3a4350; border-radius: 4px; background: #292f38; }
+    .device > div { min-width: 0; } .kind { color: #9fd3ff; } .key { color: #9ca8b7; font-size: 11px; } .value { margin-top: 2px; overflow-wrap: anywhere; } .mono, pre { font-family: Consolas, monospace; }
+    pre { max-height: 280px; margin: 0; overflow: auto; white-space: pre-wrap; word-break: break-word; color: #d8f0d4; } video { width: min(480px, 100%); max-height: 280px; background: #000; }
+    .ok { color: #9bd7a0; } .error, .empty { color: #f2a9a1; } .muted { color: #aeb6c2; } @media (max-width: 800px) { .device { grid-template-columns: 1fr; } }
+  </style>
+</head>
+<body>
+  <h1>CEF 134 Media Device Diagnostics</h1>
+  <p>Standalone NuGet consumer test. Device names and IDs are shown after enumeration.</p>
+  <button id="enumerate">Refresh devices</button><button id="microphone">Test microphone</button><button id="camera">Test camera</button><button id="desktop">Test desktop capture</button><button id="stop">Stop streams</button>
+  <section class="panel"><h2>Status</h2><div id="summary" class="summary"></div></section>
+  <section class="panel"><h2>Devices</h2><div id="devices" class="muted">Not enumerated</div></section>
+  <section class="panel"><h2>Preview</h2><video id="cameraPreview" autoplay muted playsinline></video><video id="desktopPreview" autoplay muted playsinline></video></section>
+  <section class="panel"><h2>Latest test</h2><pre id="result">No test result</pre></section>
+  <section class="panel"><h2>Event log</h2><pre id="log"></pre></section>
+  <script>
+    (() => {
+      const devicesNode = document.getElementById('devices');
+      const summaryNode = document.getElementById('summary');
+      const resultNode = document.getElementById('result');
+      const logNode = document.getElementById('log');
+      const camera = document.getElementById('cameraPreview');
+      const desktop = document.getElementById('desktopPreview');
+      const streams = new Set(); const tests = {}; let devices = []; let changes = 0;
+      const log = (message, error = false) => { const line = document.createElement('div'); line.className = error ? 'error' : 'ok'; line.textContent = `[${new Date().toLocaleTimeString()}] ${message}`; logNode.appendChild(line); logNode.scrollTop = logNode.scrollHeight; };
+      const errorText = error => `${error && error.name || 'Error'}: ${error && error.message || '(no message)'}`;
+      const snapshot = () => ({ timestamp: new Date().toISOString(), url: location.href, secureContext: isSecureContext, deviceChangeCount: changes, devices, tests });
+      const report = async () => { try { await fetch('/result', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(snapshot()) }); } catch (_) { } };
+      function summary() {
+        const count = devices.reduce((all, item) => { all[item.kind] = (all[item.kind] || 0) + 1; return all; }, {});
+        const values = [['URL', location.href], ['Secure context', isSecureContext ? 'yes' : 'no'], ['mediaDevices', navigator.mediaDevices ? 'available' : 'unavailable'], ['devicechange', `${changes} event(s)`], ['Audio input', `${count.audioinput || 0} device(s)`], ['Audio output', `${count.audiooutput || 0} device(s)`], ['Video input', `${count.videoinput || 0} device(s)`]];
+        summaryNode.textContent = ''; for (const [key, value] of values) { const item = document.createElement('div'); item.className = 'metric'; item.innerHTML = `<span>${key}</span><strong></strong>`; item.querySelector('strong').textContent = value; summaryNode.appendChild(item); }
+      }
+      function render() {
+        devicesNode.textContent = ''; if (!devices.length) { devicesNode.textContent = 'No devices detected'; summary(); return; }
+        for (const device of devices) { const item = document.createElement('div'); item.className = 'device'; const fields = [['Kind', device.kind, 'kind'], ['Label', device.label || '(empty)', 'label'], ['deviceId', device.deviceId || '(empty)', 'mono'], ['groupId', device.groupId || '(empty)', 'mono']]; for (const [key, value, className] of fields) { const cell = document.createElement('div'); cell.innerHTML = `<div class="key">${key}</div><div class="value ${className}"></div>`; cell.querySelector('.value').textContent = value; if (value === '(empty)') cell.querySelector('.value').classList.add('empty'); item.appendChild(cell); } devicesNode.appendChild(item); } summary();
+      }
+      async function enumerate(reason) { try { const list = await navigator.mediaDevices.enumerateDevices(); devices = list.map(item => ({ kind: item.kind, label: item.label || '', deviceId: item.deviceId || '', groupId: item.groupId || '' })); render(); log(`enumerateDevices succeeded (${reason}): ${devices.length} device(s)`); await report(); } catch (error) { log(`enumerateDevices failed: ${errorText(error)}`, true); } }
+      async function media(buttonId, constraints, preview, type) { const button = document.getElementById(buttonId); button.disabled = true; try { const stream = await navigator.mediaDevices.getUserMedia(constraints); streams.add(stream); if (preview) preview.srcObject = stream; const tracks = stream.getTracks().map(track => ({ kind: track.kind, label: track.label || '', readyState: track.readyState, settings: track.getSettings() })); tests[buttonId] = { ok: true, type, constraints, tracks }; resultNode.textContent = JSON.stringify(tests[buttonId], null, 2); log(`${type} succeeded: ${tracks.map(track => track.label || '(no label)').join(', ')}`); await enumerate(`${type} permission`); } catch (error) { tests[buttonId] = { ok: false, type, name: error && error.name || '', message: error && error.message || '', constraint: error && error.constraint || '' }; resultNode.textContent = JSON.stringify(tests[buttonId], null, 2); log(`${type} failed: ${errorText(error)}`, true); await report(); } finally { button.disabled = false; } }
+      document.getElementById('enumerate').onclick = () => enumerate('manual');
+      document.getElementById('microphone').onclick = () => media('microphone', { audio: { channelCount: { ideal: 1 }, sampleRate: { ideal: 16000 }, echoCancellation: true, noiseSuppression: true, autoGainControl: true }, video: false }, null, 'Microphone');
+      document.getElementById('camera').onclick = () => media('camera', { audio: false, video: true }, camera, 'Camera');
+      document.getElementById('desktop').onclick = async () => { try { const stream = await navigator.mediaDevices.getDisplayMedia({ video: true, audio: true }); streams.add(stream); desktop.srcObject = stream; tests.desktop = { ok: true, tracks: stream.getTracks().map(track => ({ kind: track.kind, label: track.label || '', readyState: track.readyState, settings: track.getSettings() })) }; resultNode.textContent = JSON.stringify(tests.desktop, null, 2); log('Desktop capture succeeded'); await report(); } catch (error) { tests.desktop = { ok: false, name: error && error.name || '', message: error && error.message || '' }; resultNode.textContent = JSON.stringify(tests.desktop, null, 2); log(`Desktop capture failed: ${errorText(error)}`, true); await report(); } };
+      document.getElementById('stop').onclick = () => { for (const stream of streams) for (const track of stream.getTracks()) track.stop(); streams.clear(); camera.srcObject = null; desktop.srcObject = null; log('Stopped all media streams'); };
+      summary(); if (!navigator.mediaDevices) log('navigator.mediaDevices unavailable', true); else { log('navigator.mediaDevices available'); navigator.mediaDevices.addEventListener('devicechange', () => { changes += 1; log(`devicechange received (#${changes})`); enumerate('devicechange'); }); enumerate('startup'); }
+    })();
+  </script>
+</body>
+</html>

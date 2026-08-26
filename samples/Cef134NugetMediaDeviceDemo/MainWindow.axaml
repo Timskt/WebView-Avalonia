@@ -1,0 +1,15 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:webview="clr-namespace:WebViewControl;assembly=WebViewControl.Avalonia"
+        x:Class="Cef134NugetMediaDeviceDemo.MainWindow"
+        Width="1160"
+        Height="820"
+        Title="CEF 134 NuGet media device diagnostics">
+  <DockPanel>
+    <TextBlock x:Name="Status"
+               DockPanel.Dock="Top"
+               Margin="10"
+               TextWrapping="Wrap" />
+    <webview:WebView x:Name="Browser" Address="about:blank" />
+  </DockPanel>
+</Window>
