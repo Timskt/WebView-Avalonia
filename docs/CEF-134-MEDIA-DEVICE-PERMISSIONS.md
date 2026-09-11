@@ -27,12 +27,12 @@ capture devices and the default WASAPI input stream were available.
 
 ## Fix
 
-`CefGlue.Common 134.6998.178-9n1m.11` explicitly creates normal child browsers
+`CefGlue.Common 134.6998.178-9n1m.12` explicitly creates normal child browsers
 with `CefRuntimeStyle.Alloy`. Alloy uses CEF's media permission implementation
 for both permission requests and permission checks, restoring consistent device
 enumeration without fake-media command-line switches.
 
-`WebViewControl-Avalonia 3.134.178-codecs.11` keeps automatic media permission
+`WebViewControl-Avalonia 3.134.178-codecs.12` keeps automatic media permission
 handling enabled through `WebView.Settings.EnableMediaStream`, which defaults to
 `true`. Applications do not need to implement an additional permission handler.
 

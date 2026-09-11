@@ -47,28 +47,21 @@ hardware availability can still cause capture requests to fail.
 
 ## Hardware acceleration
 
-GPU compositing remains enabled by default, but hardware video encode/decode
-are disabled by default. This keeps H.264 WebRTC desktop capture on the
-software path, avoiding intermittent black frames seen with some Windows GPU
-drivers. The settings must be assigned before the first WebView is created:
+Hardware acceleration is enabled by default. The settings must be assigned
+before the first WebView is created:
 
 ```csharp
 WebView.Settings.EnableGpuAcceleration = true;
-WebView.Settings.EnableHardwareVideoDecoding = false;
-WebView.Settings.EnableHardwareVideoEncoding = false;
-```
-
-To opt into hardware video after validating the target GPU/driver:
-
-```csharp
 WebView.Settings.EnableHardwareVideoDecoding = true;
 WebView.Settings.EnableHardwareVideoEncoding = true;
 ```
 
-To disable GPU compositing as well:
+To disable a capability:
 
 ```csharp
 WebView.Settings.EnableGpuAcceleration = false;
+WebView.Settings.EnableHardwareVideoDecoding = false;
+WebView.Settings.EnableHardwareVideoEncoding = false;
 ```
 
 These options control Chromium switches only. Actual hardware use still

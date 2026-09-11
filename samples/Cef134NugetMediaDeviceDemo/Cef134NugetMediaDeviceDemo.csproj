@@ -13,7 +13,7 @@
   <ItemGroup>
     <PackageReference Include="Avalonia.Desktop" Version="11.0.10" />
     <PackageReference Include="Avalonia.Themes.Fluent" Version="11.0.10" />
-    <PackageReference Include="WebViewControl-Avalonia" Version="3.134.178-codecs.11" />
+    <PackageReference Include="WebViewControl-Avalonia" Version="3.134.178-codecs.12" />
   </ItemGroup>
 
   <ItemGroup>

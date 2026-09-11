@@ -16,13 +16,8 @@ namespace WebViewControl {
         private bool enableDesktopCapture = true;
         private string desktopCaptureSource;
         private bool enableGpuAcceleration = true;
-        // The codec-enabled CEF build includes a software H.264 path. Hardware
-        // video surfaces are not reliable for WebRTC desktop capture on all
-        // Windows drivers and can result in intermittent black frames, so keep
-        // software video as the stable default. Applications can opt in after
-        // validating their target GPU/driver combination.
-        private bool enableHardwareVideoDecoding = false;
-        private bool enableHardwareVideoEncoding = false;
+        private bool enableHardwareVideoDecoding = true;
+        private bool enableHardwareVideoEncoding = true;
         private bool osrEnabled = false;
         private string userAgent;
         private string logFile;
@@ -169,8 +164,7 @@ namespace WebViewControl {
 
         /// <summary>
         /// Set to true to allow hardware video decoding when supported by the OS and GPU.
-        /// Default is false because hardware decoder surfaces can intermittently
-        /// produce black frames for H.264 WebRTC desktop capture.
+        /// Default is true.
         /// </summary>
         public bool EnableHardwareVideoDecoding {
             get => enableHardwareVideoDecoding;
@@ -182,8 +176,7 @@ namespace WebViewControl {
 
         /// <summary>
         /// Set to true to allow hardware video encoding when supported by the OS and GPU.
-        /// Default is false because hardware encoder surfaces can intermittently
-        /// produce black frames for H.264 WebRTC desktop capture.
+        /// Default is true.
         /// </summary>
         public bool EnableHardwareVideoEncoding {
             get => enableHardwareVideoEncoding;
