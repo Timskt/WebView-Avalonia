@@ -6,8 +6,8 @@ CEF 134 NuGet Media Device Diagnostics
 4. Check media-device-result.json and cef-media-device.log for raw results.
 
 Packages:
-- WebViewControl-Avalonia 3.134.178-codecs.11
-- CefGlue.Common/Avalonia 134.6998.178-9n1m.11
+- WebViewControl-Avalonia 3.134.178-codecs.12
+- CefGlue.Common/Avalonia 134.6998.178-9n1m.12
 - chromiumembeddedframework.runtime.win-x64 134.3.9-codecs.1
 
 The native runtime and libcef.dll are unchanged in this release. The media

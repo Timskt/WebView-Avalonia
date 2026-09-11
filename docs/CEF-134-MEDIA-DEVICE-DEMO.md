@@ -1,7 +1,7 @@
 # CEF 134 media device Demo
 
 `samples/Cef134NugetMediaDeviceDemo` is a standalone NuGet consumer. It references
-`WebViewControl-Avalonia 3.134.178-codecs.11` and does not reference the source
+`WebViewControl-Avalonia 3.134.178-codecs.12` and does not reference the source
 projects under `WebView` or `vendor`.
 
 From the repository root, restore and publish it with:

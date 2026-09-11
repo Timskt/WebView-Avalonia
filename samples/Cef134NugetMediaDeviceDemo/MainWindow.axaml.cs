@@ -29,7 +29,7 @@ public sealed partial class MainWindow : Window
         browser.Navigated += OnNavigated;
         server.ResultReceived += OnResultReceived;
         server.Start();
-        SetStatus($"WebViewControl-Avalonia 3.134.178-codecs.11\nWaiting for CEF browser initialization...");
+        SetStatus($"WebViewControl-Avalonia 3.134.178-codecs.12\nWaiting for CEF browser initialization...");
         Closed += (_, _) => server.Dispose();
     }
 
